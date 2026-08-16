@@ -79,6 +79,43 @@
       appears right here.</div></div>
   </div>
 
+  <!-- ── SIGNUP CARD: вставить ЦЕЛИКОМ в index.html ПЕРЕД строкой
+       <div class="card"> за которой идёт <h2>Get your key</h2> ── -->
+  <div class="card" id="signup">
+    <h2>No invite code? Get one here</h2>
+    <p style="color:var(--dim);font-size:14px">For clinicians joining from a talk or a
+       department presentation — enter the event word you were given there.</p>
+    <input id="suName" placeholder="Your name" autocomplete="name">
+    <input id="suMail" placeholder="Email" autocomplete="email" inputmode="email">
+    <input id="suCamp" placeholder="Event code — e.g. FORUM2026" autocapitalize="characters" autocomplete="off">
+    <button class="btn" id="suGo">Get my invite code</button>
+    <div class="key" id="suCode"></div>
+    <div class="msg" id="suMsg"></div>
+    <p style="color:var(--dim);font-size:13px;margin-top:10px">One code per doctor, tied to your
+       email. Forgot it? Enter the same email again — the same code comes back. Your email is used
+       only for trial notices, nothing else.</p>
+  </div>
+  <script>
+    document.getElementById('suGo').onclick = async () => {
+      const codeBox = document.getElementById('suCode'), msg = document.getElementById('suMsg');
+      codeBox.style.display = 'none'; msg.style.display = 'none'; msg.className = 'msg';
+      try {
+        const r = await fetch('/api/signup', { method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: document.getElementById('suName').value,
+            email: document.getElementById('suMail').value,
+            campaign: document.getElementById('suCamp').value }) });
+        const d = await r.json();
+        if (d.code) {
+          codeBox.textContent = d.code; codeBox.style.display = 'block';
+          const inv = document.getElementById('inv'); if (inv) inv.value = d.code;
+          if (d.again) { msg.textContent = 'This email already has a code — here it is again.';
+            msg.className = 'msg ok'; msg.style.display = 'block'; }
+        } else { msg.textContent = d.error || 'Something went wrong.'; msg.style.display = 'block'; }
+      } catch { msg.textContent = 'No connection — try again.'; msg.style.display = 'block'; }
+    };
+  </script>
   <div class="card">
     <h2>Get your key</h2>
     <input id="dev" placeholder="Device ID — ABCD-EFGH" autocomplete="off" autocapitalize="characters">

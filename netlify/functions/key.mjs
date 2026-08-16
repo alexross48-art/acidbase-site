@@ -45,12 +45,17 @@ export default async (req) => {
   };
 
   if (device.length !== 8) return fail("The Device ID is 8 characters, shown as ABCD-EFGH.");
-  if (!CODES.includes(invite)) return fail("That invite code isn't recognised.");
+  // a code is valid if it's in the hand-out list (INVITE_CODES) OR was minted
+  // by the signup form (stored in Blobs as code:<CODE>)
+  const dashed = invite.length === 10 ? invite.slice(0, 5) + "-" + invite.slice(5) : invite;
+  const minted = await store.get(`code:${dashed}`);
+  if (!CODES.includes(invite) && !minted) return fail("That invite code isn't recognised.");
 
-  const boundTo = await store.get(`bind:${invite}`);
+  const bindKey = `bind:${minted ? dashed : invite}`;
+  const boundTo = await store.get(bindKey);
   if (boundTo && boundTo !== device)
     return fail("This invite code was already used on a different phone.", 403);
-  if (!boundTo) await store.set(`bind:${invite}`, device);
+  if (!boundTo) await store.set(bindKey, device);
 
   const h = createHmac("sha256", SECRET).update(`acidbase-scout|${device}`).digest();
   let flat = "";
