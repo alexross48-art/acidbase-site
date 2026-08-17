@@ -34,7 +34,10 @@ export default async (req) => {
 
   // simple throttle: 12 failures per IP per hour
   const ip = (req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
-  const store = getStore("acidbase-trial");
+  // strong consistency: a doctor redeems the code seconds after the signup form
+  // minted it, so an eventual read may not see code:<CODE> yet and would answer
+  // "invite code isn't recognised". Same for bind:<CODE> and the device check.
+  const store = getStore({ name: "acidbase-trial", consistency: "strong" });
   const hourKey = `attempts:${ip}:${new Date().toISOString().slice(0, 13)}`;
   const fails = parseInt((await store.get(hourKey)) || "0", 10);
   if (fails >= 12)

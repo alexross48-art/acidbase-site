@@ -96,9 +96,15 @@
        only for trial notices, nothing else.</p>
   </div>
   <script>
-    document.getElementById('suGo').onclick = async () => {
+    const suBtn = document.getElementById('suGo');
+    suBtn.onclick = async () => {
+      // a second tap while the first request is in flight would mint a second
+      // code and burn another slot of the campaign quota — refuse it
+      if (suBtn.disabled) return;
       const codeBox = document.getElementById('suCode'), msg = document.getElementById('suMsg');
       codeBox.style.display = 'none'; msg.style.display = 'none'; msg.className = 'msg';
+      const suLabel = suBtn.textContent;
+      suBtn.disabled = true; suBtn.textContent = 'Working…';
       try {
         const r = await fetch('/api/signup', { method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -114,6 +120,7 @@
             msg.className = 'msg ok'; msg.style.display = 'block'; }
         } else { msg.textContent = d.error || 'Something went wrong.'; msg.style.display = 'block'; }
       } catch { msg.textContent = 'No connection — try again.'; msg.style.display = 'block'; }
+      finally { suBtn.disabled = false; suBtn.textContent = suLabel; }
     };
   </script>
   <div class="card">

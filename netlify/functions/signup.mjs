@@ -36,7 +36,11 @@ export default async (req) => {
   const email = (body.email || "").trim().toLowerCase().slice(0, 200);
   const campaign = normCamp(body.campaign);
 
-  const store = getStore("acidbase-trial");
+  // strong consistency is required here: with the default (eventual) reads, a
+  // second request arriving seconds after the first does not yet see the
+  // signup:<email> record, so it mints a SECOND code and burns another slot of
+  // the campaign quota. Observed live on 2026-08-17.
+  const store = getStore({ name: "acidbase-trial", consistency: "strong" });
   const ip = (req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
   const hourKey = `su:${ip}:${new Date().toISOString().slice(0, 13)}`;
   const tries = parseInt((await store.get(hourKey)) || "0", 10);
