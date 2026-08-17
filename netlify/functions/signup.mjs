@@ -44,16 +44,23 @@ export default async (req) => {
   const ip = (req.headers.get("x-nf-client-connection-ip") || req.headers.get("x-forwarded-for") || "?").split(",")[0].trim();
   const hourKey = `su:${ip}:${new Date().toISOString().slice(0, 13)}`;
   const tries = parseInt((await store.get(hourKey)) || "0", 10);
-  if (tries >= 10)
+  if (tries >= 200)
     return new Response(JSON.stringify({ error: "Too many attempts — try again in an hour." }), { status: 429, headers: cors });
-  await store.set(hourKey, String(tries + 1));
+  // Only FAILED attempts count towards the throttle, the way key.mjs does it.
+  // A lecture hall shares one hospital IP, so counting successful signups too
+  // meant the eleventh doctor onwards was locked out of his own event. Mass
+  // minting is already capped by the campaign quota, not by this counter.
+  const fail = async (msg, status = 400) => {
+    await store.set(hourKey, String(tries + 1));
+    return new Response(JSON.stringify({ error: msg }), { status, headers: cors });
+  };
 
   if (name.length < 2)
-    return new Response(JSON.stringify({ error: "Please enter your name." }), { status: 400, headers: cors });
+    return fail("Please enter your name.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))
-    return new Response(JSON.stringify({ error: "That email doesn't look right." }), { status: 400, headers: cors });
+    return fail("That email doesn't look right.");
   if (!campaign || !(campaign in CAMPAIGNS))
-    return new Response(JSON.stringify({ error: "Unknown event code — check the word you were given at the talk." }), { status: 400, headers: cors });
+    return fail("Unknown event code — check the word you were given at the talk.");
 
   // the same email always gets the same code back — quota untouched
   const prevRaw = await store.get(`signup:${email}`);
