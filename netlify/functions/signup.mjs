@@ -66,19 +66,33 @@ export default async (req) => {
   if (used >= CAMPAIGNS[campaign])
     return new Response(JSON.stringify({ error: "All spots for this event are taken — write to the organiser to open more." }), { status: 403, headers: cors });
 
+  // Reserve the code with a conditional write, so two requests racing each other
+  // can never be handed the same one. `modified: false` means the key was already
+  // taken, so we simply roll another code.
+  const at = new Date().toISOString();
   let code = "";
   for (let attempt = 0; attempt < 8; attempt++) {
     let c = "TRIAL-";
     const buf = new Uint8Array(5); crypto.getRandomValues(buf);
     for (const b of buf) c += ALPHABET[b % 32];
-    if (!(await store.get(`code:${c}`))) { code = c; break; }
+    const taken = await store.set(`code:${c}`, JSON.stringify({ email, campaign, at }), { onlyIfNew: true });
+    if (taken.modified) { code = c; break; }
   }
   if (!code)
     return new Response(JSON.stringify({ error: "Please try again." }), { status: 500, headers: cors });
 
-  const at = new Date().toISOString();
-  await store.set(`code:${code}`, JSON.stringify({ email, campaign, at }));
-  await store.set(`signup:${email}`, JSON.stringify({ name, code, campaign, at }));
+  // Claim the email the same way. Reading first and writing after is not enough:
+  // two simultaneous requests both read "no such email" before either has written,
+  // and both mint a code — that cost two quota slots in testing. Only the request
+  // that wins this conditional write keeps its code; the loser hands back the
+  // winner's code and releases its own, so one email still means one code.
+  const claim = await store.set(`signup:${email}`, JSON.stringify({ name, code, campaign, at }), { onlyIfNew: true });
+  if (!claim.modified) {
+    await store.delete(`code:${code}`);
+    const winner = JSON.parse((await store.get(`signup:${email}`)) || "{}");
+    return new Response(JSON.stringify({ code: winner.code, again: true }), { status: 200, headers: cors });
+  }
+
   await store.set(`quota:${campaign}`, String(used + 1));
   return new Response(JSON.stringify({ code }), { status: 200, headers: cors });
 };
