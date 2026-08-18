@@ -21,7 +21,13 @@ export default async (req) => {
       if (!raw) continue;
       const d = JSON.parse(raw);
       d.email = b.key.slice("signup:".length);
-      d.bound = !!(await store.get(`bind:${d.code}`));
+      const dev = await store.get(`bind:${d.code}`);
+      d.bound = !!dev;
+      d.analyses = 0;
+      if (dev) {
+        const u = await store.get(`usage:${dev}`);
+        if (u) d.analyses = JSON.parse(u).total || 0;
+      }
       rows.push(d);
     }
     cursor = page.cursor;
@@ -34,6 +40,19 @@ export default async (req) => {
     perCamp[r.campaign].signed++;
     if (r.bound) perCamp[r.campaign].bound++;
   }
+  // analyses across every device that ever ticked (hand-out codes included)
+  let devs = 0, ticks = 0;
+  cursor = undefined;
+  do {
+    const page = await store.list({ prefix: "usage:", cursor });
+    for (const b of page.blobs) {
+      const raw = await store.get(b.key);
+      if (!raw) continue;
+      devs++; ticks += JSON.parse(raw).total || 0;
+    }
+    cursor = page.cursor;
+  } while (cursor);
+
   // feedback count
   let fb = 0; cursor = undefined;
   const fstore = getStore("acidbase-feedback");
@@ -45,7 +64,7 @@ export default async (req) => {
   const campRows = Object.entries(perCamp).map(([c, v]) =>
     `<tr><td>${esc(c)}</td><td>${v.signed}</td><td>${v.bound}</td></tr>`).join("");
   const listRows = rows.map((r) =>
-    `<tr><td>${esc(r.at.slice(0, 16).replace("T", " "))}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td><code>${esc(r.code)}</code></td><td>${esc(r.campaign)}</td><td>${r.bound ? "✓ on a phone" : "—"}</td></tr>`).join("");
+    `<tr><td>${esc(r.at.slice(0, 16).replace("T", " "))}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td><code>${esc(r.code)}</code></td><td>${esc(r.campaign)}</td><td>${r.bound ? "✓ on a phone" : "—"}</td><td>${r.analyses || 0}</td></tr>`).join("");
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex">
 <title>Acid-Base Scout — trial stats</title>
@@ -55,11 +74,11 @@ table{border-collapse:collapse;width:100%;margin-top:10px}
 td,th{border:1px solid #1E4B5E;padding:7px 10px;text-align:left;font-size:14px}
 th{background:#102A38}code{color:#9FE0EC}</style></head><body>
 <h1>Acid-Base Scout — closed trial</h1>
-<p>Signed up: <b>${rows.length}</b> · Activated on a phone: <b>${rows.filter((r) => r.bound).length}</b> · Feedback reports: <b>${fb}</b></p>
+<p>Signed up: <b>${rows.length}</b> · Activated on a phone: <b>${rows.filter((r) => r.bound).length}</b> · Analyses run: <b>${ticks}</b> on <b>${devs}</b> devices · Feedback reports: <b>${fb}</b></p>
 <h2>By event</h2>
 <table><tr><th>Event</th><th>Signed up</th><th>Activated</th></tr>${campRows || "<tr><td colspan=3>—</td></tr>"}</table>
 <h2>Everyone</h2>
-<table><tr><th>Date</th><th>Name</th><th>Email</th><th>Code</th><th>Event</th><th>Status</th></tr>${listRows || "<tr><td colspan=6>—</td></tr>"}</table>
+<table><tr><th>Date</th><th>Name</th><th>Email</th><th>Code</th><th>Event</th><th>Status</th><th>Analyses</th></tr>${listRows || "<tr><td colspan=7>—</td></tr>"}</table>
 </body></html>`;
   return new Response(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
 };
