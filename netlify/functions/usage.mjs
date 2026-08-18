@@ -14,7 +14,7 @@ export default async (req) => {
     "Access-Control-Allow-Headers": "Content-Type",
     "Content-Type": "application/json",
   };
-  if (req.method === "OPTIONS") return new Response("", { status: 204, headers: cors });
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST")
     return new Response(JSON.stringify({ error: "POST only" }), { status: 405, headers: cors });
 
