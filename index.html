@@ -59,9 +59,13 @@
        Closed trial for invited clinicians.</p>
   </header>
 
-  <div class="ios" id="iosNote">
-    <b>You're on an iPhone.</b> The iOS build is coming through TestFlight — leave your
-    email in the feedback box below and you'll get the invitation. The steps here are for Android.
+    <div class="ios" id="iosNote">
+    <b>You're on an iPhone.</b> Apple distributes test builds through TestFlight, so there is one extra step.
+    <div class="step" style="margin-top:12px"><div class="n">1</div><div>Install <b>TestFlight</b> from the App Store.</div></div>
+    <div class="step"><div class="n">2</div><div><a href="https://testflight.apple.com/join/uXJ9CVnN" style="color:var(--tealb)">Open this link</a> — it adds you as a tester and installs Acid-Base Scout.</div></div>
+    <div class="step"><div class="n">3</div><div>Open the app and copy the <b>Device ID</b> it shows.</div></div>
+    <div class="step"><div class="n">4</div><div>Come back here, enter it with your invite code, and paste the key into the app.</div></div>
+    <p style="margin-top:12px;font-size:13px">A TestFlight build stops working after 90 days — a fresh one will be sent before that.</p>
   </div>
 <div class="card">
     <h2>52 seconds — what it does</h2>
@@ -178,7 +182,10 @@
 </div>
 
 <script>
-  if (/iPhone|iPad/.test(navigator.userAgent)) document.getElementById('iosNote').style.display='block';
+    if (/iPhone|iPad/.test(navigator.userAgent)) {
+    document.getElementById('iosNote').style.display='block';
+    document.querySelector('.btn[href$=".apk"]').style.display='none';
+  }
   const dash=(el,len)=>{el.addEventListener('input',()=>{let v=el.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,len);
     el.value=v.match(/.{1,4}/g)?.join('-')||v;});};
   dash(document.getElementById('dev'),8);
