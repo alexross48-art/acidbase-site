@@ -1,44 +1,71 @@
-// POST /api/usage  { device: "ABCD-EFGH", version: "1.1.57-beta", total: 42 }
-// The app sends ONE number after each completed analysis: the running total
-// of analyses on that device. Newest total wins — it only ever grows, and a
-// device that was offline catches up with a single tick. Disclosed in the
-// app's consent screen and privacy policy; no case data ever rides along.
+// POST /api/usage — the phone's own counter, reported after each analysis.
+// Also the only place the app learns that a newer build exists.
 import { getStore } from "@netlify/blobs";
 
-const norm = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+/* ★★ WHY THIS ADDS UP INSTEAD OF KEEPING A MAXIMUM.
+   The phone sends its RUNNING TOTAL, never a delta: a lost send then costs
+   nothing and a resend cannot double-count. Keeping the maximum made that
+   safe — until the field showed the price. Alex's number sat at 37 through a
+   day of real work. His phone's counter had restarted at some point (an
+   app-data clear, a reinstall that was not "over the top"), so every tick
+   since carried a number BELOW 37 and the maximum discarded all of them. The
+   count freezes for good, silently, with nothing on either side looking broken.
+   ★ The fix keeps what made max right: each INSTALLATION reports under its own
+   key, the maximum is taken per installation, and stats.mjs adds the
+   installations up. A restart opens a new bucket that accumulates instead of
+   being swallowed.
+   ★ Ticks written before v1.1.65 have no install id and live under the old key
+   `usage:<device>`. They are left exactly where they are — the prefix sum in
+   stats.mjs picks them up unchanged, so nothing already counted is lost. */
+
+const clean = (s, max) => String(s == null ? "" : s).replace(/[^A-Za-z0-9._-]/g, "").slice(0, max);
 
 export default async (req) => {
-  const cors = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Content-Type": "application/json",
-  };
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   if (req.method !== "POST")
-    return new Response(JSON.stringify({ error: "POST only" }), { status: 405, headers: cors });
+    return new Response(JSON.stringify({ error: "POST only" }),
+      { status: 405, headers: { "Content-Type": "application/json" } });
 
   let body = {};
   try { body = await req.json(); } catch {}
-  const device = norm(body.device);
-  const total = parseInt(body.total, 10);
-  const version = String(body.version || "").slice(0, 40);
-  if (device.length !== 8 || !Number.isFinite(total) || total < 0 || total > 1000000)
-    return new Response(JSON.stringify({ error: "Bad tick." }), { status: 400, headers: cors });
 
-  // same store and the same undashed device format key.mjs uses for bind:,
-  // so the stats page can join a signup's code to its analyses count
-  const store = getStore({ name: "acidbase-trial", consistency: "strong" });
-  const key = `usage:${device}`;
-  const prevRaw = await store.get(key);
-  const prev = prevRaw ? JSON.parse(prevRaw) : null;
-  const at = new Date().toISOString();
-  const next = {
-    total: Math.max(total, prev ? prev.total || 0 : 0),
-    version,
-    at,
-    first: prev && prev.first ? prev.first : at,
-  };
-  await store.set(key, JSON.stringify(next));
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: cors });
+  const device  = clean(body.device, 24);
+  const install = clean(body.install, 24);
+  const version = clean(body.version, 24);
+  const total   = Number(body.total);
+
+  if (!device || !Number.isFinite(total) || total < 0)
+    return new Response(JSON.stringify({ error: "bad request" }),
+      { status: 400, headers: { "Content-Type": "application/json" } });
+
+  // No install id means a build older than 1.1.65 — keep writing where it
+  // always wrote, so its history stays intact.
+  const key = install ? `usage:${device}:${install}` : `usage:${device}`;
+  const store = getStore("acidbase-trial");
+
+  let prev = null;
+  try { const raw = await store.get(key); if (raw) prev = JSON.parse(raw); } catch {}
+  // Max WITHIN one installation — the original protection, in the only scope
+  // where it is always true.
+  const kept = Math.max(total, prev && Number.isFinite(prev.total) ? prev.total : 0);
+
+  try {
+    await store.set(key, JSON.stringify({
+      total: kept,
+      device,
+      version: version || (prev && prev.version) || "",
+      at: new Date().toISOString(),
+      scan: body.scan && typeof body.scan === "object" ? body.scan : (prev ? prev.scan : null),
+    }));
+  } catch {}
+
+  /* The reply tells the app whether a newer build exists. Set these three in
+     Netlify → Environment variables. ★ Raise LATEST_VERSION only AFTER the new
+     APK is actually at LATEST_URL, or a doctor downloads what he already has
+     and concludes the update is broken. */
+  return new Response(JSON.stringify({
+    ok: true,
+    latest: process.env.LATEST_VERSION || null,
+    notes:  process.env.LATEST_NOTES   || null,
+    url:    process.env.LATEST_URL     || null,
+  }), { headers: { "Content-Type": "application/json" } });
 };
