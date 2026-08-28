@@ -48,6 +48,9 @@ export default async (req) => {
   // where it is always true.
   const kept = Math.max(total, prev && Number.isFinite(prev.total) ? prev.total : 0);
 
+   // ★ Временно: ошибка записи возвращается, а не глотается. Молчаливый catch
+  // здесь сделал невозможной диагностику ровно тогда, когда она понадобилась.
+  let wrote = false, err = null;
   try {
     await store.set(key, JSON.stringify({
       total: kept,
@@ -56,14 +59,15 @@ export default async (req) => {
       at: new Date().toISOString(),
       scan: body.scan && typeof body.scan === "object" ? body.scan : (prev ? prev.scan : null),
     }));
-  } catch {}
+    wrote = true;
+  } catch (e) { err = String(e && e.message || e).slice(0, 200); }
 
   /* The reply tells the app whether a newer build exists. Set these three in
      Netlify → Environment variables. ★ Raise LATEST_VERSION only AFTER the new
      APK is actually at LATEST_URL, or a doctor downloads what he already has
      and concludes the update is broken. */
-  return new Response(JSON.stringify({
-    ok: true,
+    return new Response(JSON.stringify({
+    ok: true, wrote, err,
     latest: process.env.LATEST_VERSION || null,
     notes:  process.env.LATEST_NOTES   || null,
     url:    process.env.LATEST_URL     || null,
