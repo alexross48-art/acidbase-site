@@ -115,7 +115,9 @@ async function askClaude(model, b64, mediaType) {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      model, max_tokens: 400, temperature: 0,
+      // no `temperature`: the 4.7+/5.x models reject it (400 "deprecated");
+      // the prompt's "never guess" and the checksums do the work instead
+      model, max_tokens: 400,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
         { type: "text", text: PROMPT },
