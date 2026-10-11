@@ -82,9 +82,13 @@ export function parseReply(text) {
   const m = String(text || "").match(/\{[\s\S]*\}/);
   if (!m) return null;
   let raw; try { raw = JSON.parse(m[0]); } catch { return null; }
+  // tolerate {"values": {...}} and keys in another case ("na", "PH")
+  if (raw && typeof raw.values === "object" && raw.values) raw = raw.values;
+  const lower = {};
+  for (const [k, v] of Object.entries(raw || {})) lower[String(k).toLowerCase()] = v;
   const vals = {};
   for (const k of KEYS) {
-    const s = raw[k];
+    const s = raw[k] != null ? raw[k] : lower[k.toLowerCase()];
     if (s == null) continue;
     const t = String(s).trim().replace(",", ".").replace(/^[−–]/, "-");
     if (/^-?\d{1,4}(\.\d{1,3})?$/.test(t)) vals[k] = t;   // anything else is dropped
@@ -117,7 +121,9 @@ async function askClaude(model, b64, mediaType) {
     body: JSON.stringify({
       // no `temperature`: the 4.7+/5.x models reject it (400 "deprecated");
       // the prompt's "never guess" and the checksums do the work instead
-      model, max_tokens: 400,
+      // room to spare: a model that thinks before answering spends output
+      // tokens on that first, and a cut-off answer has no JSON in it at all
+      model, max_tokens: 2000,
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
         { type: "text", text: PROMPT },
@@ -130,7 +136,8 @@ async function askClaude(model, b64, mediaType) {
   }
   const d = await r.json();
   const text = (d.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
-  return { text, usage: d.usage || {} };
+  const kinds = (d.content || []).map((c) => c.type).join(",");
+  return { text, usage: d.usage || {}, stop: d.stop_reason || "?", kinds };
 }
 
 async function underCaps(device) {
@@ -180,6 +187,13 @@ export default async (req) => {
       const v2 = parseReply(second.text) || {};
       const c2 = checksums(v2);
       if (!fails(c2) && Object.keys(v2).length) { model = strong; values = v2; checks = c2; }
+    }
+    // ★ an empty answer is a fault to SHOW, not a quiet "nothing": say what the
+    // model did, so the phone's card can tell Alex instead of a blank
+    if (!Object.keys(values).length) {
+      const said = String(first.text || "").replace(/\s+/g, " ").slice(0, 140);
+      return json(502, { error: `the model returned no values (stop: ${first.stop}; blocks: ${first.kinds || "none"}${said ? `; said: "${said}"` : ""})`,
+                         usage, costUSD: Math.round(spent * 1e6) / 1e6 });
     }
     return json(200, { values, checks, model, usage, costUSD: Math.round(spent * 1e6) / 1e6 });
   } catch (e) {
