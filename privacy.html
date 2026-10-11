@@ -14,13 +14,23 @@
 </head>
 <body><div class="wrap">
   <h1>Privacy Policy — Acid-Base Scout (beta)</h1>
-  <p>Last updated: 16 August 2026. Acid-Base Scout is a clinical decision-support app in a
+  <p>Last updated: 11 October 2026. Acid-Base Scout is a clinical decision-support app in a
      closed evaluation. This policy describes what the app and this site process.</p>
 
   <h2>Photos and laboratory values</h2>
   <ul>
-    <li>Photos of the analyzer screen are processed <b>entirely on the device</b>. They are never
+    <li>Photos of the analyzer screen are processed <b>on the device</b>. A photo is never
         uploaded, transmitted, or stored on any server.</li>
+    <li><b>Cloud check (optional, off by default).</b> If you switch it on, the app sends a
+        <b>strip</b> cut out of the photo on the phone — only the rows of the results table, with the
+        parameter names and their values — to this site, which passes it to an AI model
+        (Anthropic's Claude API) for a second reading. Before anything is sent, every word with six or more
+        digits (sample numbers, IDs, dates) is blacked out; the phone then reads the finished strip again
+        and sends nothing if a number of that kind is still visible, and the server checks once more.
+        The app shows you the exact strip that was sent.</li>
+    <li>The strip and its reading are not stored by this site; only a daily count of cloud readings
+        per Device ID is kept, to cap costs. Under Anthropic's commercial API terms, content sent
+        through the API is not used to train its models.</li>
     <li>The values read from a photo, and any case data you enter, stay in the app's local storage
         on your phone. Deleting the app deletes them.</li>
     <li>The app instructs users to keep patient-identifying information out of the frame and out
@@ -54,7 +64,8 @@
   <h2>What we do not do</h2>
   <ul>
     <li>No analytics or advertising trackers, on the site or in the app.</li>
-    <li>No sale or sharing of any data with third parties.</li>
+    <li>No sale of any data. The only outside party that receives anything is the AI provider
+        that reads Cloud check strips — and only when you have switched Cloud check on.</li>
     <li>No accounts, no passwords, no patient records.</li>
   </ul>
 
