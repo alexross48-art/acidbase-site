@@ -3,220 +3,855 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Acid-Base Scout: photograph the blood-gas results on the lab screen, or type them, and get a structured acid-base reading with the working shown. Closed trial for invited clinicians.">
 <title>Acid-Base Scout — closed trial</title>
-<meta name="description" content="Acid-Base Scout: enter blood-gas values by hand or from a photo of the results on the computer screen — get a structured acid-base reading with pointers for the differential. Closed trial for invited clinicians.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-  :root{--ink:#0B1F2A;--card:#102A38;--bord:#1E4B5E;--teal:#2C93A8;--tealb:#43BCD2;
-        --amber:#F5C84C;--dim:#9DB4BC;--txt:#EAF2F4}
-  *{margin:0;padding:0;box-sizing:border-box}
-  body{background:var(--ink);color:var(--txt);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;
-       -webkit-font-smoothing:antialiased}
-  .wrap{max-width:560px;margin:0 auto;padding:20px 18px 60px}
-  header{padding:26px 0 8px}
-  h1{font-size:30px;letter-spacing:-.01em}
-  h1 em{font-style:normal;color:var(--tealb)}
-  .beta{display:inline-block;vertical-align:middle;margin-left:8px;background:var(--tealb);color:var(--ink);
-        font:700 11px/1 ui-monospace,monospace;letter-spacing:.1em;padding:4px 10px;border-radius:99px}
-  .sub{color:var(--dim);margin-top:6px}
-  .card{background:var(--card);border:1px solid var(--bord);border-radius:14px;padding:18px;margin-top:16px}
-  .card h2{font-size:18px;margin-bottom:8px}
-  .step{display:flex;gap:12px;margin-top:12px}
-  .n{flex:none;width:26px;height:26px;border-radius:50%;background:var(--teal);color:#fff;
-     display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
-  .btn{display:block;width:100%;text-align:center;background:var(--teal);color:#fff;border:none;
-       font:600 17px/1 inherit;padding:16px;border-radius:12px;margin-top:14px;cursor:pointer;text-decoration:none}
-  .btn.ghost{background:none;border:1px solid var(--teal);color:var(--tealb)}
-  input,textarea{width:100%;font:16px/1.4 ui-monospace,monospace;background:#0C2230;color:var(--txt);
-       border:1px solid var(--bord);border-radius:10px;padding:14px;margin-top:10px}
-  textarea{font-family:inherit;min-height:90px}
-  input::placeholder,textarea::placeholder{color:#5E7A85}
-  .key{font:700 22px/1.3 ui-monospace,monospace;color:var(--tealb);text-align:center;
-       background:#0C2230;border:1px dashed var(--teal);border-radius:10px;padding:16px;margin-top:12px;
-       word-break:break-all;display:none}
-  .msg{margin-top:10px;font-size:14px;color:var(--amber);display:none}
-  details{border-top:1px solid var(--bord);padding:12px 0}
-  details:first-of-type{border-top:none}
-  summary{cursor:pointer;font-weight:600;list-style:none;display:flex;justify-content:space-between}
-  summary::after{content:"+";color:var(--tealb)}
-  details[open] summary::after{content:"–"}
-  details p{color:var(--dim);margin-top:8px;font-size:15px}
-  .amberbox{border:1px solid rgba(245,200,76,.5);background:rgba(245,200,76,.08);color:#F3DFA6;
-       border-radius:12px;padding:14px;font-size:14px;margin-top:16px}
-  .ios{display:none;border:1px solid var(--bord);background:#0C2230;border-radius:12px;
-       padding:14px;margin-top:14px;font-size:15px;color:var(--dim)}
-  footer{margin-top:34px;color:#6E8892;font:12px/1.7 ui-monospace,monospace;text-align:center}
-  footer a{color:#8FB4BF}
-  .ok{color:#7FD8A8}
+/* Layout: a split hero whose right half is a working scene (lab monitor + phone) that
+   replays the real photo-to-answer flow; quiet sections below in the app's own navy/teal. */
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --fg:#10202B; --muted:#55687A; --line:#D5DEE6;
+  --navy:#0B2738; --teal:#13798A; --teal-ink:#0E6170; --accent-soft:#DDEFF1;
+  --ok:#2E8B57; --warn:#B7791F;
+  /* the illustration keeps the real devices' colours in both themes */
+  --app-navy:#0D2A3D; --app-bg:#E7EDF2; --app-card:#FFFFFF; --app-ink:#13222E; --app-muted:#5C6E7E;
+  --app-teal:#147F8F; --app-green:#2E8B57;
+  --lis-bg:#FFFFFF; --lis-line:#E3E7EC; --lis-label:#2F5D9E; --lis-head:#1F4E8C; --lis-id:#2B2B2B;
+  --pill-yellow:#F3E24A; --pill-red:#D9443A;
+  --learn-ink:#2E7D5B; --learn-soft:#DCEFE3;
+  --display:"Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0A1A25; --surface:#102634; --fg:#E6EEF3; --muted:#9AB0C0; --line:#20394A;
+  --navy:#E6EEF3; --teal:#3FB3C2; --teal-ink:#7FD3DD; --accent-soft:#123B47;
+  --ok:#5CC58A; --warn:#E3B04B; --learn-ink:#6FD39F; --learn-soft:#173F2E; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0A1A25; --surface:#102634; --fg:#E6EEF3; --muted:#9AB0C0; --line:#20394A;
+  --navy:#E6EEF3; --teal:#3FB3C2; --teal-ink:#7FD3DD; --accent-soft:#123B47;
+  --ok:#5CC58A; --warn:#E3B04B; --learn-ink:#6FD39F; --learn-soft:#173F2E; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:17px;line-height:1.55;
+  padding-inline:clamp(16px,4vw,48px);padding-block:0 40px;-webkit-font-smoothing:antialiased}
+a{color:var(--teal-ink)}
+.wrap{max-width:1180px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;color:var(--navy)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+/* ── top bar ── */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-block:22px}
+.brand{display:flex;align-items:center;gap:12px;font-family:var(--display);font-weight:800;font-size:20px;color:var(--navy);text-decoration:none}
+.mark{width:34px;height:34px;border-radius:9px;background:var(--app-navy);display:grid;place-items:center}
+.mark svg{width:20px;height:20px}
+.beta{font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:3px 8px;border-radius:99px;background:var(--accent-soft);color:var(--teal-ink)}
+.top nav{display:flex;gap:18px;flex-wrap:wrap}
+.top nav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:15px}
+.top nav a:hover{color:var(--fg)}
+
+/* ── hero ── */
+.hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(24px,4vw,56px);align-items:center;padding-block:12px 28px}
+.hero-copy{min-width:0;display:flex;flex-direction:column;gap:20px}
+.hero h1{font-size:clamp(36px,5.2vw,62px);line-height:1.02;font-weight:800;letter-spacing:-.02em}
+.hero h1 em{font-style:normal;color:var(--teal)}
+.lede{font-size:19px;color:var(--muted);max-width:34ch;margin:0}
+.ctas{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:13px 20px;border-radius:12px;font-weight:700;font-size:16px;text-decoration:none;border:1.5px solid transparent;transition:transform .15s ease, background .15s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn:focus-visible,.toggle:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+.btn.primary{background:var(--app-teal);color:#fff}
+.btn.primary:hover{background:#106E7C}
+.btn.ghost{border-color:var(--line);color:var(--fg);background:var(--surface)}
+.btn small{display:block;font-weight:500;font-size:12px;opacity:.8;margin-top:-2px}
+.fine{font-size:14px;color:var(--muted);margin:0}
+
+/* ── the scene ── */
+.scene-col{min-width:0;display:flex;flex-direction:column;gap:14px}
+.scene-box{position:relative;width:100%;aspect-ratio:820/600;max-width:100%}
+.stage{position:absolute;left:0;top:0;width:820px;height:600px;transform-origin:0 0}
+.steps{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.steps ol{list-style:none;display:flex;gap:6px;padding:0;margin:0;flex-wrap:wrap}
+.steps li{font-family:var(--mono);font-size:12px;letter-spacing:.06em;padding:6px 10px;border-radius:99px;color:var(--muted);border:1px solid var(--line);background:var(--surface);transition:all .3s ease}
+.steps li.on{color:#fff;background:var(--app-teal);border-color:var(--app-teal)}
+.steps li.done{color:var(--teal-ink);border-color:var(--teal)}
+.toggle{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:99px;padding:6px 12px;cursor:pointer}
+
+/* monitor */
+.monitor{position:absolute;left:0;top:18px;width:600px;height:470px;border-radius:14px;background:#1B1F24;padding:12px 12px 16px;box-shadow:0 30px 60px -30px rgba(10,30,45,.55)}
+.monitor::after{content:"";position:absolute;left:50%;bottom:-58px;width:120px;height:58px;transform:translateX(-50%);background:linear-gradient(#2A2F35,#1B1F24);clip-path:polygon(30% 0,70% 0,100% 100%,0 100%);z-index:-1}
+.lis{position:relative;height:100%;background:var(--lis-bg);border-radius:4px;overflow:hidden;font-family:Arial, "Helvetica Neue", sans-serif;color:var(--lis-id)}
+.lis-bar{height:30px;background:var(--lis-head);display:flex;align-items:center;justify-content:space-between;padding:0 12px;color:#fff;font-size:12px;direction:rtl}
+.lis-bar .tabs{display:flex;gap:6px;direction:ltr}
+.lis-bar .tabs span{background:#C53A3A;border-radius:10px;padding:2px 10px;font-size:10px;font-weight:700}
+.lis-bar .tabs span:first-child{background:#7B3FB8}
+.lis-grid{display:grid;grid-template-columns:118px 1fr 92px 26px;position:relative}
+.lis-h{font-size:11px;color:#6A7684;padding:6px 8px;border-bottom:1px solid var(--lis-line);direction:rtl;text-align:center}
+.lis-cell{height:21.4px;border-bottom:1px solid var(--lis-line);display:flex;align-items:center;font-size:12.5px}
+.lis-id{padding-left:8px;color:#3A3A3A;font-size:12px}
+.lis-label{justify-content:center;color:var(--lis-label);text-decoration:underline;text-underline-offset:2px;font-size:12.5px}
+.lis-val{justify-content:center}
+.pill{display:inline-block;min-width:44px;text-align:center;padding:1px 6px;border-radius:9px;font-size:12px;line-height:16px;transition:box-shadow .25s ease, transform .25s ease}
+.pill.y{background:var(--pill-yellow)}
+.pill.r{background:var(--pill-red);color:#fff}
+.lis-arrow{justify-content:center;font-size:12px;font-weight:700}
+.lis-arrow.up{color:#C53A3A}.lis-arrow.dn{color:#C53A3A}
+.pill.hit{box-shadow:0 0 0 2px var(--app-teal), 0 0 0 6px rgba(20,127,143,.22);transform:scale(1.08)}
+.pill.chk{box-shadow:0 0 0 2px #8A6BD1, 0 0 0 6px rgba(138,107,209,.2)}
+.scanband{position:absolute;left:0;right:0;height:24px;background:linear-gradient(90deg,rgba(20,127,143,0),rgba(20,127,143,.16) 20%,rgba(20,127,143,.16) 80%,rgba(20,127,143,0));border-top:1px solid rgba(20,127,143,.55);border-bottom:1px solid rgba(20,127,143,.55);opacity:0;transition:top .32s cubic-bezier(.4,.1,.2,1), opacity .3s ease;pointer-events:none}
+.scanband.on{opacity:1}
+.lis-foot{position:absolute;left:0;right:0;bottom:0;padding:6px 8px;display:grid;grid-template-columns:118px 1fr;gap:4px;font-size:11px;color:#6B6B6B;opacity:.7}
+
+/* phone */
+.phone{position:absolute;left:548px;top:44px;width:262px;height:540px;border-radius:38px;background:#0E1114;padding:9px;box-shadow:0 40px 70px -28px rgba(5,20,30,.7), inset 0 0 0 2px #2B3138;transition:transform .9s cubic-bezier(.3,.1,.2,1)}
+.phone.aim{transform:translate(-150px,-26px) rotate(-3deg)}
+.phone .notch{position:absolute;top:15px;left:50%;width:11px;height:11px;margin-left:-5px;border-radius:50%;background:#000;z-index:5;box-shadow:0 0 0 2px #15191d}
+.screen{position:relative;width:100%;height:100%;border-radius:30px;overflow:hidden;background:var(--app-bg);font-family:Roboto,"Segoe UI",Arial,sans-serif;color:var(--app-ink)}
+.scr{position:absolute;inset:0;transition:opacity .45s ease, transform .45s ease}
+.scr.off{opacity:0;transform:translateY(10px);pointer-events:none}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;z-index:6;pointer-events:none;transition:opacity .5s ease}
+.flash.on{opacity:1;transition:none}
+
+/* camera screen */
+.cam{background:#000}
+.vf{position:absolute;left:0;right:0;top:0;bottom:92px;overflow:hidden}
+.vf-inner{position:absolute;left:-66px;top:48px;transform-origin:0 0;transform:scale(.55) rotate(-1.2deg);filter:blur(.35px) saturate(.9) brightness(.97)}
+.vf::before{content:"";position:absolute;inset:0;z-index:2;background:repeating-linear-gradient(118deg,rgba(0,0,0,.05) 0 2px,rgba(255,255,255,0) 2px 5px),repeating-linear-gradient(28deg,rgba(80,120,255,.035) 0 3px,rgba(255,255,255,0) 3px 7px);mix-blend-mode:multiply;animation:moire 2.2s linear infinite}
+@keyframes moire{to{background-position:24px 0, 0 18px}}
+.brackets{position:absolute;inset:34px 20px 20px;z-index:3;pointer-events:none}
+.brackets i{position:absolute;width:26px;height:26px;border:3px solid rgba(255,255,255,.9)}
+.brackets i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0;border-radius:6px 0 0 0}
+.brackets i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0;border-radius:0 6px 0 0}
+.brackets i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0;border-radius:0 0 0 6px}
+.brackets i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0;border-radius:0 0 6px 0}
+.cam-hint{position:absolute;left:12px;right:12px;top:30px;z-index:4;text-align:center;font-size:11px;color:#fff;background:rgba(0,0,0,.45);border-radius:10px;padding:5px 8px}
+.cam-bar{position:absolute;left:0;right:0;bottom:0;height:92px;background:#000;display:flex;align-items:center;justify-content:center}
+.shutter{width:58px;height:58px;border-radius:50%;border:4px solid #fff;display:grid;place-items:center;transition:transform .15s ease}
+.shutter::after{content:"";width:44px;height:44px;border-radius:50%;background:#fff}
+.shutter.press{transform:scale(.86)}
+
+/* app chrome inside the phone */
+.app-head{background:var(--app-navy);color:#fff;padding:26px 12px 8px}
+.app-head .row{display:flex;justify-content:space-between;align-items:center}
+.app-title{font-weight:800;font-size:17px;letter-spacing:-.01em}
+.learn{font-size:10px;border:1px solid rgba(255,255,255,.45);border-radius:8px;padding:3px 7px;font-weight:600}
+.pro{display:inline-block;margin-top:6px;font-size:9px;font-weight:800;letter-spacing:.08em;background:#1E8BA6;border-radius:5px;padding:2px 6px}
+.app-sub{font-family:var(--mono);font-size:7.5px;letter-spacing:.13em;color:#9DB8C7;margin-top:6px;line-height:1.35}
+.app-body{padding:8px 9px 0;display:flex;flex-direction:column;gap:6px}
+.card{background:var(--app-card);border-radius:12px;padding:8px 10px;box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.cap{display:flex;align-items:center;gap:8px;font-size:11px}
+.tick{width:18px;height:18px;border-radius:50%;background:var(--app-teal);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.cap b{display:block;font-size:12px}
+.cap span{color:var(--app-muted);font-size:10px}
+.thumb{margin-left:auto;width:34px;height:42px;border-radius:5px;background:repeating-linear-gradient(180deg,#fff 0 4px,#E4E8EC 4px 5px);border:1px solid #CCD4DB;position:relative;overflow:hidden}
+.thumb::after{content:"";position:absolute;right:5px;top:6px;width:9px;height:30px;background:repeating-linear-gradient(180deg,#F3E24A 0 3px,transparent 3px 5px)}
+.reading{font-size:9px;font-family:var(--mono);letter-spacing:.1em;color:var(--app-muted);text-transform:uppercase;padding:0 2px}
+.vals{padding:2px 10px}
+.vrow{display:flex;align-items:center;height:16.4px;font-size:11px;border-bottom:1px solid #EEF1F4}
+.vrow:last-child{border-bottom:0}
+.vrow .k{flex:1;color:var(--app-ink)}
+.vrow .v{min-width:46px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;color:#B9C3CC;transition:color .2s ease}
+.vrow .c{width:16px;text-align:right;color:var(--app-green);font-size:11px;opacity:0;transition:opacity .25s ease}
+.vrow.filled .v{color:var(--app-ink)}
+.vrow.filled .c{opacity:1}
+.vrow.flash-row{background:linear-gradient(90deg,rgba(20,127,143,.12),rgba(20,127,143,0))}
+.vrow .note{font-size:8px;color:#8A6BD1;margin-right:6px;font-family:var(--mono);opacity:0;transition:opacity .3s ease}
+.vrow.filled .note{opacity:1}
+.check{font-size:9.5px;line-height:1.35;color:#35553F;background:#E5F2EA;border-radius:9px;padding:6px 9px;opacity:0;transform:translateY(6px);transition:all .4s ease}
+.check.on{opacity:1;transform:none}
+.check b{color:#1F6A3D}
+.go{background:var(--app-teal);color:#fff;border-radius:12px;padding:7px 8px;text-align:center;font-weight:700;font-size:11.5px;opacity:.45;transition:opacity .3s ease, transform .15s ease}
+.go.ready{opacity:1}
+.go.press{transform:scale(.96)}
+
+/* result screen */
+.res-head{background:var(--app-navy);color:#fff;border-radius:14px;padding:11px 12px}
+.res-head h4{margin:0;font-size:15px;line-height:1.22;font-weight:800}
+.res-head h4 span{display:block;font-size:12px;font-weight:600;color:#BFE3EA;margin-top:4px}
+.res-head p{margin:7px 0 0;font-family:var(--mono);font-size:8px;color:#9DB8C7;line-height:1.4}
+.rline{display:flex;justify-content:space-between;gap:8px;font-size:10.5px;padding:5px 0;border-bottom:1px solid #EEF1F4;opacity:0;transform:translateX(8px);transition:all .35s ease}
+.rline:last-child{border-bottom:0}
+.rline.on{opacity:1;transform:none}
+.rline b{font-variant-numeric:tabular-nums}
+.rline .hi{color:#B3402F}
+.rline .ok{color:var(--app-green)}
+.why{font-size:9.5px;color:#4E3B86;background:#EFEAFB;border-radius:9px;padding:7px 9px;line-height:1.35;opacity:0;transition:opacity .4s ease}
+.why.on{opacity:1}
+.chips{display:flex;gap:5px;flex-wrap:wrap;opacity:0;transition:opacity .4s ease}
+.chips.on{opacity:1}
+.chips span{font-size:9.5px;border:1.5px solid var(--app-teal);color:var(--app-teal);border-radius:99px;padding:2px 8px;font-weight:600;animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 4px rgba(20,127,143,.15)}}
+
+/* flying values */
+.fly{position:absolute;z-index:20;font-family:Arial,sans-serif;font-size:12px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--pill-yellow);color:#111;pointer-events:none;box-shadow:0 6px 16px -4px rgba(0,0,0,.35);transition:transform .62s cubic-bezier(.5,.05,.25,1), opacity .2s ease .5s;will-change:transform}
+.fly.plain{background:#fff;border:1px solid #CBD3DB}
+.fly.red{background:var(--pill-red);color:#fff}
+.fly.lm{background:#EFEAFB;color:#4E3B86;border:1px solid #CDBFF0}
+
+/* ── sections ── */
+section{padding-block:56px 8px}
+.sec-head{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;max-width:60ch}
+.sec-head h2{font-size:clamp(26px,3.2vw,38px);font-weight:800;letter-spacing:-.015em}
+.sec-head p{margin:0;color:var(--muted)}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.blk{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.blk h3{font-size:20px;font-weight:700}
+.blk p{margin:0;color:var(--muted);font-size:16px}
+.formula{font-family:var(--mono);font-size:13px;line-height:1.7;background:var(--bg);border-radius:10px;padding:10px 12px;color:var(--fg);overflow-x:auto}
+.formula .r{color:var(--ok)}
+.learns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+.spell{display:flex;flex-direction:column;gap:8px}
+.spell div{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-size:15px}
+.spell code{font-family:var(--mono);font-size:14px}
+.spell .to{font-family:var(--mono);font-size:13px;color:var(--teal-ink);white-space:nowrap}
+.install{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+.install ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;color:var(--fg)}
+.install li::marker{font-family:var(--mono);color:var(--teal-ink)}
+.faq{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 28px}
+.faq h3{font-size:18px;font-weight:700;margin-bottom:4px}
+.faq p{margin:0;color:var(--muted);font-size:16px}
+.disclaim{margin-top:44px;border-radius:16px;background:var(--accent-soft);padding:20px 22px;display:flex;gap:14px;align-items:flex-start}
+.disclaim strong{font-family:var(--display);font-size:18px;display:block;margin-bottom:2px;color:var(--navy)}
+.disclaim p{margin:0;color:var(--fg);font-size:15.5px}
+footer{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+footer .mail{font-family:var(--mono);user-select:all}
+
+/* ── Learn ── */
+.learn-sec{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,5fr);gap:clamp(24px,4vw,56px);align-items:center}
+.facts{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;min-width:0}
+.fact b{display:block;font-family:var(--display);font-size:30px;line-height:1;color:var(--learn-ink);font-variant-numeric:tabular-nums}
+.fact span{font-size:13px;color:var(--muted)}
+.lsteps{list-style:none;margin:18px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.lsteps li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:12px;align-items:start}
+.lsteps li i{font-style:normal;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:var(--mono);font-size:12px;font-weight:500;background:var(--learn-soft);color:var(--learn-ink)}
+.lsteps b{display:block;font-size:16px}
+.lsteps span{color:var(--muted);font-size:15px}
+.lphone-wrap{display:flex;justify-content:center;min-width:0}
+.lphone{position:relative;width:286px;max-width:100%;height:560px;border-radius:40px;background:#0E1114;padding:9px;box-shadow:0 40px 70px -28px rgba(5,20,30,.6), inset 0 0 0 2px #2B3138}
+.lphone .screen{background:#E9F3EC}
+.l-head{background:#1F4D3A;color:#fff;padding:28px 12px 9px}
+.l-head .row{display:flex;justify-content:space-between;align-items:center}
+.l-tag{display:inline-block;margin-top:6px;font-family:var(--mono);font-size:8px;letter-spacing:.14em;background:#2E7D5B;border-radius:5px;padding:3px 6px}
+.l-body{padding:8px 9px;display:flex;flex-direction:column;gap:7px}
+.l-case{background:#fff;border-radius:12px;padding:8px 10px;font-size:10.5px;line-height:1.4;color:#1E2B25}
+.l-case .meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8.5px;color:#4D6B5C;margin-bottom:4px}
+.lvl{background:#2E7D5B;color:#fff;border-radius:99px;padding:1px 7px}
+.gasstrip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.gasstrip div{background:#fff;border-radius:9px;padding:5px 4px;text-align:center;font-size:9px;color:#4D6B5C}
+.gasstrip b{display:block;font-size:13px;color:#13221B;font-variant-numeric:tabular-nums;transition:color .3s ease}
+.gasstrip .hid b{color:#9FB5A8;letter-spacing:.2em}
+.lq{background:#fff;border-radius:12px;padding:9px 10px;display:flex;flex-direction:column;gap:7px;transition:opacity .3s ease}
+.lq .qn{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:#4D6B5C;text-transform:uppercase}
+.lq .qt{font-size:12px;font-weight:700;color:#13221B;line-height:1.3}
+.lchips{display:flex;flex-wrap:wrap;gap:5px}
+.lchip{font-size:10px;font-weight:600;padding:5px 9px;border-radius:9px;background:#F3F7F4;border:1px solid #C9DAD0;border-bottom-width:3px;color:#1E2B25;transition:all .2s ease}
+.lchip.tap{transform:translateY(2px);border-bottom-width:1px}
+.lchip.good{background:#2E7D5B;border-color:#21604A;color:#fff}
+.lnum{display:flex;align-items:center;gap:6px}
+.lnum .box{flex:1;height:30px;border-radius:9px;border:1.5px solid #9CC3AE;background:#F7FBF8;display:flex;align-items:center;padding:0 10px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;color:#13221B}
+.lnum .box::after{content:"";width:1.5px;height:16px;background:#2E7D5B;margin-left:2px;animation:blink 1s step-end infinite}
+@keyframes blink{50%{opacity:0}}
+.lnum .unit{font-size:10px;color:#4D6B5C}
+.lfb{font-size:9.5px;line-height:1.4;border-radius:9px;padding:6px 8px;background:#E2F1E7;color:#1E4D35;opacity:0;transform:translateY(5px);transition:all .35s ease}
+.lfb.on{opacity:1;transform:none}
+.lfb b{color:#14532D}
+.lprog{display:flex;gap:4px;justify-content:center}
+.lprog i{width:22px;height:5px;border-radius:3px;background:#C9DAD0;transition:background .3s ease}
+.lprog i.on{background:#2E7D5B}
+@media (max-width:900px){
+  .learn-sec{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:900px){
+  .hero{grid-template-columns:minmax(0,1fr)}
+  .three{grid-template-columns:minmax(0,1fr)}
+  .learns,.install,.faq{grid-template-columns:minmax(0,1fr)}
+  .top nav{display:none}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+/* ── trial forms ── */
+.forms{margin-top:18px}
+.blk input,.blk textarea{width:100%;font:16px/1.4 var(--mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:13px 14px}
+.blk textarea{font-family:var(--body);min-height:110px;resize:vertical}
+.blk input::placeholder,.blk textarea::placeholder{color:var(--muted);opacity:.8}
+.btn.wide{width:100%;justify-content:center;cursor:pointer;font-family:inherit}
+.btn[disabled]{opacity:.6;cursor:default;transform:none}
+.out{display:none;font:700 22px/1.3 var(--mono);color:var(--teal-ink);text-align:center;background:var(--accent-soft);border:1px dashed var(--teal);border-radius:10px;padding:14px;word-break:break-all}
+.msg{display:none;font-size:14px;color:var(--warn)}
+.msg.ok{color:var(--ok)}
+.video{margin-top:18px}
+.video video{width:100%;border-radius:10px;background:#000;max-height:520px}
+.fb{max-width:720px}
 </style>
 </head>
 <body>
+
+
 <div class="wrap">
-  <header>
-    <h1>Acid-Base <em>Scout</em><span class="beta">BETA</span></h1>
-    <p class="sub">Enter the blood-gas and chemistry values your way — by hand or by
-       photographing the results on the computer screen. Get a structured acid-base reading, with pointers
-       on which directions of the differential to check next. Photos stay on your phone unless you switch on Cloud check.
-       Closed trial for invited clinicians.</p>
+  <header class="top">
+    <a class="brand" href="#top" aria-label="Acid-Base Scout">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M2 14 L6 9 L9 12 L13 5 L18 10" fill="none" stroke="#5FD0DC" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="13" cy="5" r="1.8" fill="#F3E24A"/></svg></span>
+      Acid-Base Scout <span class="beta">BETA</span>
+    </a>
+    <nav>
+      <a href="#how">How it reads</a>
+      <a href="#learn">Learn</a>
+      <a href="#learns">Other hospitals</a>
+      <a href="#install">Install</a>
+      <a href="#faq">Questions</a>
+      <a href="#feedback">Feedback</a>
+    </nav>
   </header>
 
-    <div class="ios" id="iosNote">
-    <b>You're on an iPhone.</b> Apple distributes test builds through TestFlight, so there is one extra step.
-    <div class="step" style="margin-top:12px"><div class="n">1</div><div>Install <b>TestFlight</b> from the App Store.</div></div>
-    <div class="step"><div class="n">2</div><div><a href="https://testflight.apple.com/join/uXJ9CVnN" style="color:var(--tealb)">Open this link</a> — it adds you as a tester and installs Acid-Base Scout.</div></div>
-    <div class="step"><div class="n">3</div><div>Open the app and copy the <b>Device ID</b> it shows.</div></div>
-    <div class="step"><div class="n">4</div><div>Come back here, enter it with your invite code, and paste the key into the app.</div></div>
-    <p style="margin-top:12px;font-size:13px">A TestFlight build stops working after 90 days — a fresh one will be sent before that.</p>
-  </div>
-<div class="card">
-    <h2>52 seconds — what it does</h2>
-    <video controls preload="metadata" playsinline
-           style="width:100%;border-radius:10px;margin-top:10px;background:#000">
-      <source src="promo.mp4" type="video/mp4">
-    </video>
-  </div>
-  <div class="card">
-    <h2>Get the app</h2>
-    <div class="step"><div class="n">1</div><div>Download and install the APK. Android will ask
-      to allow installs from this source — once.</div></div>
-    <a class="btn" href="https://github.com/alexross48-art/acidbase-site/releases/download/v1.2.31/AcidBaseScout-1.2.31.apk">Download for Android (.apk)</a>
-    <div class="step"><div class="n">2</div><div>Open the app. It shows this phone's
-      <b>Device ID</b> (like <span style="font-family:ui-monospace,monospace">2VR6-P5KA</span>). Copy it.</div></div>
-    <div class="step"><div class="n">3</div><div>Enter it below with your invite code — the key
-      appears right here.</div></div>
-  </div>
+  <main id="top">
+    <section class="hero" style="padding-block:12px 28px">
+      <div class="hero-copy">
+        <span class="eyebrow">Blood gas · on the ward</span>
+        <h1>Photograph the gas. <em>Read it to the end.</em></h1>
+        <p class="lede">Point the phone at the lab screen. Every value lands in its field, the screen's own arithmetic checks the reading, and the answer comes with its working shown.</p>
+        <div class="ctas">
+          <a class="btn primary" href="https://testflight.apple.com/join/uXJ9CVnN" target="_blank" rel="noopener">iPhone<small>&nbsp;· TestFlight</small></a>
+          <a class="btn ghost" href="https://github.com/alexross48-art/acidbase-site/releases/download/v1.2.31/AcidBaseScout-1.2.31.apk" target="_blank" rel="noopener">Android<small>&nbsp;· APK</small></a>
+        </div>
+        <p class="fine">Closed trial for invited clinicians. Photos stay on the phone unless you switch on Cloud check.</p>
+      </div>
 
-  <!-- ── SIGNUP CARD: вставить ЦЕЛИКОМ в index.html ПЕРЕД строкой
-       <div class="card"> за которой идёт <h2>Get your key</h2> ── -->
-  <div class="card" id="signup">
-    <h2>No invite code? Get one here</h2>
-    <p style="color:var(--dim);font-size:14px">For clinicians joining from a talk or a
-       department presentation — enter the event word you were given there.</p>
-    <input id="suName" placeholder="Your name" autocomplete="name">
-    <input id="suMail" placeholder="Email" autocomplete="email" inputmode="email">
-    <input id="suCamp" placeholder="Event code — e.g. FORUM2026" autocapitalize="characters" autocomplete="off">
-    <button class="btn" id="suGo">Get my invite code</button>
-    <div class="key" id="suCode"></div>
-    <div class="msg" id="suMsg"></div>
-    <p style="color:var(--dim);font-size:13px;margin-top:10px">One code per doctor, tied to your
-       email. Forgot it? Enter the same email again — the same code comes back. Your email is used
-       only for trial notices, nothing else.</p>
-  </div>
-  <script>
-    const suBtn = document.getElementById('suGo');
-    suBtn.onclick = async () => {
-      // a second tap while the first request is in flight would mint a second
-      // code and burn another slot of the campaign quota — refuse it
-      if (suBtn.disabled) return;
-      const codeBox = document.getElementById('suCode'), msg = document.getElementById('suMsg');
-      codeBox.style.display = 'none'; msg.style.display = 'none'; msg.className = 'msg';
-      const suLabel = suBtn.textContent;
-      suBtn.disabled = true; suBtn.textContent = 'Working…';
-      try {
-        const r = await fetch('/api/signup', { method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: document.getElementById('suName').value,
-            email: document.getElementById('suMail').value,
-            campaign: document.getElementById('suCamp').value }) });
-        const d = await r.json();
-        if (d.code) {
-          codeBox.textContent = d.code; codeBox.style.display = 'block';
-          const inv = document.getElementById('inv'); if (inv) inv.value = d.code;
-          if (d.again) { msg.textContent = 'This email already has a code — here it is again.';
-            msg.className = 'msg ok'; msg.style.display = 'block'; }
-        } else { msg.textContent = d.error || 'Something went wrong.'; msg.style.display = 'block'; }
-      } catch { msg.textContent = 'No connection — try again.'; msg.style.display = 'block'; }
-      finally { suBtn.disabled = false; suBtn.textContent = suLabel; }
-    };
-  </script>
-  <div class="card">
-    <h2>Get your key</h2>
-    <input id="dev" placeholder="Device ID — ABCD-EFGH" autocomplete="off" autocapitalize="characters">
-    <input id="inv" placeholder="Invite code" autocomplete="off" autocapitalize="characters">
-    <button class="btn" id="go">Get the key</button>
-    <div class="key" id="key"></div>
-    <div class="msg" id="msg"></div>
-    <p style="color:var(--dim);font-size:13px;margin-top:10px">The key works only on that phone.
-       Reinstalling the app makes a new Device ID and needs a new key — just come back here
-       with the same invite code.</p>
-  </div>
+      <div class="scene-col" aria-label="Demonstration: a lab screen is photographed and the values fill the app">
+        <div class="scene-box" id="sceneBox">
+          <div class="stage" id="stage">
+            <!-- lab monitor -->
+            <div class="monitor" aria-hidden="true">
+              <div class="lis" id="lis">
+                <div class="lis-bar"><span>מדבקה · תוצאות מעבדה</span><span class="tabs"><span>BG</span><span>PL</span><span>PH</span></span></div>
+                <div class="lis-grid" id="lisGrid">
+                  <div class="lis-h" style="text-align:left;direction:ltr">Sample</div>
+                  <div class="lis-h">בדיקה</div>
+                  <div class="lis-h">תוצאה</div>
+                  <div class="lis-h"></div>
+                </div>
+                <div class="scanband" id="band"></div>
+              </div>
+            </div>
+            <!-- phone -->
+            <div class="phone" id="phone" aria-hidden="true">
+              <div class="notch"></div>
+              <div class="screen">
+                <div class="flash" id="flash"></div>
 
-  <div class="card">
-    <h2>Questions</h2>
-    <details><summary>What does it read?</summary>
-      <p>The blood-gas panel straight off the lab screen: pH, pCO₂, pO₂, electrolytes,
-      lactate, haemoglobin fractions and more. Values it can't read with confidence it leaves
-      blank rather than guessing — a blank can be re-shot; a plausible wrong number can't be unseen.</p></details>
-    <details><summary>Where do the photos go?</summary>
-      <p>Nowhere. Reading happens on the phone, photos are not uploaded, and the app asks you
-      to keep the patient banner out of frame.</p>
-      <p>The one exception is optional and off until you switch it on: <b>Cloud check</b> sends a strip
-      of the table — only the rows with parameter names and their values, every long number blacked out —
-      for a second reading by an AI model, shown beside the phone's own. The app shows you the exact strip
-      it sent. <a href="privacy.html">Details in the privacy policy.</a></p></details>
-    <details><summary>What does it do with the values?</summary>
-      <p>A structured acid-base reading: primary disorder, anion gap, expected compensation —
-      with the arithmetic shown at every step. It may suggest adding the chemistry or urine
-      panel when they would change the interpretation.</p></details>
-    <details><summary>Who can join?</summary>
-      <p>Invited clinicians in the closed trial. The ten most active testers keep the full
-      version free when it launches.</p></details>
-  </div>
+                <div class="scr cam" id="scrCam">
+                  <div class="vf"><div class="vf-inner" id="vfInner"></div></div>
+                  <div class="brackets"><i></i><i></i><i></i><i></i></div>
+                  <div class="cam-hint">Names and values in one frame</div>
+                  <div class="cam-bar"><div class="shutter" id="shutter"></div></div>
+                </div>
 
-  <div class="card">
-    <h2>Feedback / bug reports</h2>
-    <p style="color:var(--dim);font-size:14px">Anything — a misread value, a wrong interpretation,
-       an idea. <b>Please, no patient details.</b></p>
-    <textarea id="fbtext" placeholder="What happened, what you expected…"></textarea>
-    <input id="fbmail" placeholder="Your email (optional — for a reply / TestFlight invite)">
-    <button class="btn ghost" id="fbgo">Send feedback</button>
-    <div class="msg" id="fbmsg"></div>
-  </div>
+                <div class="scr off" id="scrScan">
+                  <div class="app-head">
+                    <div class="row"><span class="app-title">Acid-Base Scout</span><span class="learn">📖 Learn</span></div>
+                    <span class="pro">PRO</span>
+                    <div class="app-sub">ACID-BASE DISORDERS · DECISION SUPPORT · V1.2.30-BETA</div>
+                  </div>
+                  <div class="app-body">
+                    <div class="card cap"><span class="tick">✓</span><div><b>Results table</b><span>1 photo captured</span></div><span class="thumb"></span></div>
+                    <span class="reading" id="readingLbl">Reading the photo…</span>
+                    <div class="card vals" id="vals"></div>
+                    <div class="check" id="check"></div>
+                    <div class="go" id="go">Analyse these 14 values</div>
+                  </div>
+                </div>
 
-  <div class="amberbox">
-    <b>Decision support, not a diagnosis.</b> Acid-Base Scout is an evaluation build and not a
-    registered medical device. Check every value read from a photo against the original results.
-    Clinical decisions remain yours.
-  </div>
+                <div class="scr off" id="scrRes">
+                  <div class="app-head">
+                    <div class="row"><span class="app-title">Acid-Base Scout</span><span class="learn">📖 Learn</span></div>
+                    <span class="pro">PRO</span>
+                    <div class="app-sub">ACID-BASE DISORDERS · DECISION SUPPORT · V1.2.30-BETA</div>
+                  </div>
+                  <div class="app-body">
+                    <div class="res-head"><h4>High anion-gap metabolic acidosis<span>+ a concurrent metabolic alkalosis</span></h4><p>Judged against pH 7.35–7.45 · pCO₂ 35–45 · HCO₃⁻ 22–26</p></div>
+                    <div class="card" id="resLines">
+                      <div class="rline"><span>Anion gap</span><b class="hi">32 · high</b></div>
+                      <div class="rline"><span>Winter 1.5 × 16 + 8</span><b class="ok">32 ± 2 · fits</b></div>
+                      <div class="rline"><span>Δ gap / Δ HCO₃⁻</span><b class="hi">20 / 8 = 2.5</b></div>
+                      <div class="rline"><span>K⁺ · Cl⁻</span><b class="hi">3.10 · 92.0 low</b></div>
+                    </div>
+                    <div class="why" id="why">The gap rose by 20 but bicarbonate fell by only 8. Base is being added: vomiting? The acidosis is worse than the HCO₃⁻ shows.</div>
+                    <div class="chips" id="chips"><span>urine Cl⁻</span><span>ketones</span><span>repeat K⁺</span></div>
+                  </div>
+                </div>
 
-  <footer>
-    <a href="privacy.html">Privacy policy</a> · CLOSED BETA · © 2026 Alex Ross<br>
-    Contact: <a href="mailto:alexross48@gmail.com">alexross48@gmail.com</a>
-  </footer>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="steps">
+          <ol id="steps"><li>1 Aim</li><li>2 Read</li><li>3 Check</li><li>4 Answer</li></ol>
+          <button class="toggle" id="toggle" type="button" aria-pressed="false">Pause</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <div class="sec-head">
+        <span class="eyebrow">What happens in those few seconds</span>
+        <h2>It reads, it checks, then it explains</h2>
+        <p>Reading runs on the phone; an optional Cloud check adds a second, AI reading beside it. A value it cannot read for certain stays blank for you to fill. It never puts a plausible number where it was unsure.</p>
+      </div>
+      <div class="three">
+        <div class="blk">
+          <h3>Reads the screen</h3>
+          <p>Each row is matched label to value, even with the phone tilted and the screen striped by moiré. A lost decimal point, a minus the camera thinned out, an O printed for a 0: each is recognised against what that parameter can be.</p>
+          <div class="formula">BEb&nbsp;&nbsp;&nbsp;"8.9" + pixels → <span class="r">−8.9</span><br>Sodium "l40.O" → <span class="r">140.0</span><br>pH&nbsp;&nbsp;&nbsp;&nbsp;"7320" → <span class="r">7.320</span></div>
+        </div>
+        <div class="blk">
+          <h3>Checks it against the screen</h3>
+          <p>Most analysers also print tCO₂ and an anion gap. Those only add up if pCO₂, HCO₃⁻ and the electrolytes landed on the right rows, so the reading is verified before you see it.</p>
+          <div class="formula">tCO₂ = HCO₃⁻ + 0.0301 × pCO₂<br>17.0 = 16.0 + 0.0301 × 32 <span class="r">✓</span><br>gap 35 = 140 + 3.1 − 92 − 16 <span class="r">✓</span></div>
+        </div>
+        <div class="blk">
+          <h3>Explains with the working shown</h3>
+          <p>Primary disorder, expected compensation, albumin-corrected gap, delta ratio, Stewart strong-ion gap. Every step opens to the arithmetic, so it can be checked by hand at the bedside.</p>
+          <div class="formula">ΔAG / ΔHCO₃⁻ = 20 / 8 = <span class="r">2.5</span><br>&gt; 2 → a metabolic alkalosis<br>&nbsp;&nbsp;&nbsp;is hiding behind the acidosis</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="learn">
+      <div class="learn-sec">
+        <div>
+          <div class="sec-head" style="margin-bottom:8px">
+            <span class="eyebrow">Learn · inside the app</span>
+            <h2>Read the gas yourself, then see the working</h2>
+            <p>A separate teaching mode, green so it can never be mistaken for a patient. Each case gives a short story and a gas. You answer step by step, and every answer is checked against the same engine and the same arithmetic the clinical side uses. Teaching cases never touch the patient side, and progress stays on your phone.</p>
+          </div>
+          <div class="facts">
+            <div class="fact"><b>343</b><span>cases</span></div>
+            <div class="fact"><b>106</b><span>patterns</span></div>
+            <div class="fact"><b>1 · 2 · 3</b><span>difficulty levels</span></div>
+          </div>
+          <ol class="lsteps">
+            <li><i>1</i><div><b>Primary disorder</b><span>pCO₂ is hidden, so the direction has to be read from pH and HCO₃⁻.</span></div></li>
+            <li><i>2</i><div><b>Predict the compensation</b><span>Type the expected pCO₂; it is graded against the engine's own corridor, then the measured value is shown.</span></div></li>
+            <li><i>3</i><div><b>Calculate</b><span>Anion gap, albumin correction, delta ratio, urine anion gap, osmolar gap, Stewart SIG — whichever the case carries the numbers for.</span></div></li>
+            <li><i>4</i><div><b>Choose the next test</b><span>When the differential is still open: which test would move it most.</span></div></li>
+          </ol>
+          <p class="fine" style="margin-top:16px">Mastery is tracked per step: three right in a row on different cases. A missed step comes back a few cases later, and the progress page lists what to work on next, with the formula to relearn.</p>
+        </div>
+        <div class="lphone-wrap" aria-label="Demonstration of a Learn case">
+          <div class="lphone" aria-hidden="true">
+            <div class="notch"></div>
+            <div class="screen">
+              <div class="l-head">
+                <div class="row"><span class="app-title">Acid-Base Scout</span><span class="learn">📖 Learn</span></div>
+                <span class="l-tag">LEARNING · NOT A PATIENT</span>
+              </div>
+              <div class="l-body">
+                <div class="l-case"><div class="meta"><span>Case #1</span><span class="lvl">Level 1</span></div>27 y/o, type 1 diabetes, missed insulin doses. Two days of thirst, polyuria and vomiting; deep, laboured breathing.</div>
+                <div class="gasstrip">
+                  <div>pH<b>7.21</b></div>
+                  <div class="hid" id="lPco2">pCO₂<b>••</b></div>
+                  <div>HCO₃⁻<b>6.6</b></div>
+                  <div>Na⁺<b>136</b></div>
+                  <div>Cl⁻<b>99</b></div>
+                  <div>K⁺<b>5.7</b></div>
+                </div>
+                <div class="lq" id="lq">
+                  <span class="qn" id="lqn"></span>
+                  <span class="qt" id="lqt"></span>
+                  <div class="lchips" id="lchips"></div>
+                  <div class="lnum" id="lnum" hidden><span class="box" id="lbox"></span><span class="unit" id="lunit"></span></div>
+                </div>
+                <div class="lfb" id="lfb"></div>
+                <div class="lprog" id="lprog"><i></i><i></i><i></i><i></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="learns">
+      <div class="learns">
+        <div class="sec-head">
+          <span class="eyebrow">Other hospitals, other programs</span>
+          <h2>It learns the screen in front of it</h2>
+          <p>No setup. The order of rows, the way each value is printed, and the names a program gives its parameters are learned from ordinary scans. Type a value the app missed and it remembers what that row is called. A label it has never seen is named by the value beside it: 7.320 can only be pH, in any language.</p>
+        </div>
+        <div class="spell" aria-label="Examples of learned spellings">
+          <div><code>Sodium-WB</code><span class="to">→ Na⁺</span></div>
+          <div><code>Bikarbonat i.P.</code><span class="to">→ HCO₃⁻ · learned</span></div>
+          <div><code>חומציות</code><span class="to">→ pH · from its value</span></div>
+          <div><code>cBase(Ecf)c</code><span class="to">→ BE (ecf)</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="sec-head">
+        <span class="eyebrow">Install</span>
+        <h2>Join the closed trial</h2>
+        <p>Each phone gets its own key, tied to an invite code. Clinicians joining from a talk or a department meeting use the event word they were given.</p>
+      </div>
+      <div class="install">
+        <div class="blk">
+          <h3>iPhone</h3>
+          <ol>
+            <li>Install TestFlight from the App Store.</li>
+            <li>Open the <a href="https://testflight.apple.com/join/uXJ9CVnN" target="_blank" rel="noopener">join link</a> and install Acid-Base Scout.</li>
+            <li>Open the app and copy its Device ID.</li>
+            <li>Enter the ID with your invite code to get the key, then paste the key into the app.</li>
+          </ol>
+          <p class="fine">A TestFlight build stops after 90 days; a fresh one arrives before then.</p>
+        </div>
+        <div class="blk">
+          <h3>Android</h3>
+          <ol>
+            <li><a href="https://github.com/alexross48-art/acidbase-site/releases/download/v1.2.31/AcidBaseScout-1.2.31.apk" target="_blank" rel="noopener">Download the APK</a>.</li>
+            <li>Allow installs from this source when Android asks, once.</li>
+            <li>Open the app to see its Device ID, for example 2VR6-P5KA.</li>
+            <li>Enter the ID with your invite code to get the key.</li>
+          </ol>
+          <p class="fine">The key works only on that phone. A reinstall makes a new Device ID; the same invite code gets a new key.</p>
+        </div>
+      </div>
+      <div class="install forms">
+        <div class="blk" id="key">
+          <h3>Get your key</h3>
+          <p>Enter the Device ID the app shows and your invite code. The key appears right here.</p>
+          <input id="keyDev" placeholder="Device ID — ABCD-EFGH" autocomplete="off" autocapitalize="characters">
+          <input id="keyInv" placeholder="Invite code" autocomplete="off" autocapitalize="characters">
+          <button class="btn primary wide" id="keyGo" type="button">Get the key</button>
+          <div class="out" id="keyOut"></div>
+          <div class="msg" id="keyMsg"></div>
+        </div>
+        <div class="blk" id="signup">
+          <h3>No invite code? Get one here</h3>
+          <p>For clinicians joining from a talk or a department presentation: enter the event word you were given there.</p>
+          <input id="suName" placeholder="Your name" autocomplete="name">
+          <input id="suMail" placeholder="Email" autocomplete="email" inputmode="email">
+          <input id="suCamp" placeholder="Event code — e.g. FORUM2026" autocapitalize="characters" autocomplete="off">
+          <button class="btn ghost wide" id="suGo" type="button">Get my invite code</button>
+          <div class="out" id="suCode"></div>
+          <div class="msg" id="suMsg"></div>
+          <p class="fine">One code per doctor, tied to your email. Forgot it? Enter the same email again and the same code comes back. Your email is used only for trial notices.</p>
+        </div>
+      </div>
+      <div class="video blk">
+        <h3>52 seconds — what it does</h3>
+        <video controls preload="metadata" playsinline><source src="promo.mp4" type="video/mp4"></video>
+      </div>
+    </section>
+
+    <section id="faq">
+      <div class="sec-head"><span class="eyebrow">Questions</span><h2>Before you point it at a screen</h2></div>
+      <div class="faq">
+        <div><h3>What does it read?</h3><p>The blood-gas panel: pH, pCO₂, pO₂, sO₂, base excess, bicarbonate, electrolytes, lactate, glucose and the haemoglobin fractions.</p></div>
+        <div><h3>Where do the photos go?</h3><p>Nowhere. Reading happens on the phone and photos are not uploaded. Keep the patient banner out of the frame.</p></div>
+        <div><h3>What is Cloud check?</h3><p>An optional second reading by an AI model, off until you switch it on. Only a strip of the table leaves the phone: the rows with parameter names and values, every long number blacked out. Where the two readings differ, the screen's own arithmetic decides, or the field is left for you. <a href="privacy.html">Privacy details</a>.</p></div>
+        <div><h3>What if it misreads?</h3><p>Every value is shown beside the photo it came from, and you confirm them before analysis. A value it was unsure of is left blank, never guessed.</p></div>
+        <div><h3>Who can join?</h3><p>Invited clinicians. The ten most active testers keep the full version free at launch.</p></div>
+      </div>
+    </section>
+
+    <section id="feedback">
+      <div class="sec-head"><span class="eyebrow">Feedback</span><h2>Tell me what it got wrong</h2>
+        <p>A misread value, a wrong interpretation, an idea. A screenshot from the app is the most useful report. <b>Please, no patient details.</b></p></div>
+      <div class="blk fb">
+        <textarea id="fbText" placeholder="What happened, what you expected…"></textarea>
+        <input id="fbMail" placeholder="Your email (optional — for a reply or a TestFlight invite)" inputmode="email">
+        <button class="btn ghost wide" id="fbGo" type="button">Send feedback</button>
+        <div class="msg" id="fbMsg"></div>
+      </div>
+    </section>
+
+    <div class="disclaim">
+      <div><strong>Decision support, not a diagnosis.</strong><p>This is an evaluation build, not a registered medical device. Check every photo-read value against the original result. Clinical decisions remain yours.</p></div>
+    </div>
+
+    <footer>
+      <span>© 2026 Alex Ross · Closed beta · <a href="privacy.html">Privacy policy</a></span>
+      <span class="mail"><a href="mailto:alexross48@gmail.com">alexross48@gmail.com</a></span>
+    </footer>
+  </main>
 </div>
 
 <script>
-    if (/iPhone|iPad/.test(navigator.userAgent)) {
-    document.getElementById('iosNote').style.display='block';
-    document.querySelector('.btn[href$=".apk"]').style.display='none';
-  }
-  const dash=(el,len)=>{el.addEventListener('input',()=>{let v=el.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,len);
-    el.value=v.match(/.{1,4}/g)?.join('-')||v;});};
-  dash(document.getElementById('dev'),8);
-  document.getElementById('go').onclick=async()=>{
-    const key=document.getElementById('key'),msg=document.getElementById('msg');
-    key.style.display='none';msg.style.display='none';
-    try{
-      const r=await fetch('/api/key',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({deviceId:document.getElementById('dev').value,
-                             invite:document.getElementById('inv').value})});
-      const d=await r.json();
-      if(d.key){key.textContent=d.key;key.style.display='block';}
-      else{msg.textContent=d.error||'Something went wrong.';msg.style.display='block';}
-    }catch{msg.textContent='No connection — try again.';msg.style.display='block';}
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const show = (el, text, ok) => { el.textContent = text; el.className = "msg" + (ok ? " ok" : ""); el.style.display = "block"; };
+  // Device ID: capitals and a dash every four, as the app shows it
+  const dev = $("keyDev");
+  dev.addEventListener("input", () => { const v = dev.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+    dev.value = (v.match(/.{1,4}/g) || []).join("-"); });
+  $("keyGo").onclick = async () => {
+    const out = $("keyOut"), msg = $("keyMsg"); out.style.display = "none"; msg.style.display = "none";
+    try {
+      const r = await fetch("/api/key", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceId: dev.value, invite: $("keyInv").value }) });
+      const d = await r.json();
+      if (d.key) { out.textContent = d.key; out.style.display = "block"; }
+      else show(msg, d.error || "Something went wrong.");
+    } catch { show(msg, "No connection — try again."); }
   };
-  document.getElementById('fbgo').onclick=async()=>{
-    const m=document.getElementById('fbmsg');m.style.display='none';
-    const text=document.getElementById('fbtext').value.trim();
-    if(!text){m.textContent='Write a line first.';m.style.display='block';return;}
-    try{
-      const r=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({source:'site',text,email:document.getElementById('fbmail').value.trim(),at:new Date().toISOString()})});
-      if(r.ok){m.textContent='Sent — thank you.';m.className='msg ok';m.style.display='block';
-        document.getElementById('fbtext').value='';}
-      else{m.textContent='Could not send — try again.';m.style.display='block';}
-    }catch{m.textContent='No connection — try again.';m.style.display='block';}
+  const su = $("suGo");
+  su.onclick = async () => {
+    // a second tap while the first request is in flight would mint a second code
+    if (su.disabled) return;
+    const code = $("suCode"), msg = $("suMsg"); code.style.display = "none"; msg.style.display = "none";
+    const label = su.textContent; su.disabled = true; su.textContent = "Working…";
+    try {
+      const r = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: $("suName").value, email: $("suMail").value, campaign: $("suCamp").value }) });
+      const d = await r.json();
+      if (d.code) {
+        code.textContent = d.code; code.style.display = "block"; $("keyInv").value = d.code;
+        if (d.again) show(msg, "This email already has a code — here it is again.", true);
+      } else show(msg, d.error || "Something went wrong.");
+    } catch { show(msg, "No connection — try again."); }
+    finally { su.disabled = false; su.textContent = label; }
   };
+  $("fbGo").onclick = async () => {
+    const m = $("fbMsg"); m.style.display = "none";
+    const text = $("fbText").value.trim();
+    if (!text) { show(m, "Write a line first."); return; }
+    try {
+      const r = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "site", text, email: $("fbMail").value.trim(), at: new Date().toISOString() }) });
+      if (r.ok) { show(m, "Sent — thank you.", true); $("fbText").value = ""; }
+      else show(m, "Could not send — try again.");
+    } catch { show(m, "No connection — try again."); }
+  };
+})();
 </script>
+
+<script>
+(function(){
+  // The panel on the lab screen, in this analyser's own row order. A synthetic case:
+  // diabetic ketoacidosis with three days of vomiting. Every number agrees with the
+  // others: tCO2 = 16.0 + 0.0301*32 = 17.0; printed gap = 140 + 3.1 - 92 - 16 = 35.
+  // key: the app field it fills; lm: a landmark the app reads only to check itself.
+  const ROWS = [
+    { label:"pH", val:"7.320", tone:"y", arrow:"dn", key:"pH" },
+    { label:"pCO2", val:"32.0", tone:"y", arrow:"dn", key:"pCO₂" },
+    { label:"pO2", val:"88.0", key:"pO₂" },
+    { label:"sO2", val:"96.4", key:"SpO₂/SaO₂" },
+    { label:"HCT-Blood Gas", val:"43", lm:true },
+    { label:"tHb - WB", val:"14.2", lm:true },
+    { label:"BEb", val:"8.9", shown:"−8.9", tone:"y", arrow:"dn", key:"BE (ecf)", note:"minus from pixels" },
+    { label:"HCO3", val:"16.0", tone:"y", arrow:"dn", key:"HCO₃⁻" },
+    { label:"tCO2", val:"17.0", tone:"y", arrow:"dn", lm:true },
+    { label:"Methemoglobin - WB", val:"0.8", key:"MetHb" },
+    { label:"Carboxyhemoglobin-WB", val:"1.1", key:"COHb" },
+    { label:"Lactate-WB", val:"2.1", tone:"y", arrow:"up", key:"Lactate" },
+    { label:"Ionized Calcium - WB", val:"1.12", key:"Ca²⁺ (ionized)" },
+    { label:"Sodium-WB", val:"140.0", key:"Na⁺" },
+    { label:"Potassium-WB", val:"3.10", tone:"y", arrow:"dn", key:"K⁺" },
+    { label:"Chloride - WB", val:"92.0", tone:"y", arrow:"dn", key:"Cl⁻" },
+    { label:"Glucose-WB", val:"486", tone:"r", arrow:"up", key:"Glucose" },
+    { label:"Anion gap - WB", val:"35", tone:"r", arrow:"up", lm:true },
+  ];
+  const IDS = ["400706536","400706486","400706471","400706455","400706443","400706432","400706417","400706399","400706388","400706371","400706360","400706352","400706340","400706331","400706319","400706305","400706298","400706281"];
+  // the order the app's form lists the fields
+  const FORM = ["pH","pCO₂","pO₂","SpO₂/SaO₂","BE (ecf)","HCO₃⁻","Lactate","Ca²⁺ (ionized)","Na⁺","K⁺","Cl⁻","Glucose","MetHb","COHb"];
+
+  const $ = (id) => document.getElementById(id);
+  const grid = $("lisGrid"), valsEl = $("vals"), stage = $("stage"), box = $("sceneBox");
+  const pills = [];
+  ROWS.forEach((r, i) => {
+    const id = document.createElement("div"); id.className = "lis-cell lis-id"; id.textContent = IDS[i];
+    const lb = document.createElement("div"); lb.className = "lis-cell lis-label"; lb.textContent = r.label;
+    const vc = document.createElement("div"); vc.className = "lis-cell lis-val";
+    const p = document.createElement("span"); p.className = "pill" + (r.tone ? " " + r.tone : ""); p.textContent = r.shown && r.shown.startsWith("−") ? "-" + r.val : r.val;
+    vc.appendChild(p); pills.push(p);
+    const ar = document.createElement("div"); ar.className = "lis-cell lis-arrow " + (r.arrow || ""); ar.textContent = r.arrow === "up" ? "↑" : r.arrow === "dn" ? "↓" : "";
+    grid.append(id, lb, vc, ar);
+  });
+  const slots = {};
+  FORM.forEach((k) => {
+    const row = document.createElement("div"); row.className = "vrow";
+    const src = ROWS.find((r) => r.key === k);
+    row.innerHTML = '<span class="k"></span>' + (src && src.note ? '<span class="note"></span>' : '') + '<span class="v">—</span><span class="c">✓</span>';
+    row.querySelector(".k").textContent = k;
+    if (src && src.note) row.querySelector(".note").textContent = src.note;
+    valsEl.appendChild(row); slots[k] = row;
+  });
+  // the phone's viewfinder shows the same screen, as the camera sees it
+  $("vfInner").appendChild(document.getElementById("lis").cloneNode(true)).removeAttribute("id");
+  const vfLis = $("vfInner").firstElementChild; vfLis.style.width = "576px"; vfLis.style.height = "442px";
+  vfLis.querySelector(".scanband") && vfLis.querySelector(".scanband").remove();
+  vfLis.querySelectorAll("[id]").forEach((e) => e.removeAttribute("id"));
+
+  // scale the 820×600 stage to the column
+  let scale = 1;
+  function fit(){ scale = box.clientWidth / 820; stage.style.transform = "scale(" + scale + ")"; }
+  fit(); new ResizeObserver(fit).observe(box);
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const stepEls = [...$("steps").children];
+  function step(n){ stepEls.forEach((el, i) => { el.classList.toggle("on", i === n); el.classList.toggle("done", i < n); }); }
+
+  let run = 0, paused = false, visible = true;
+  const sleep = (ms, token) => new Promise((res, rej) => setTimeout(() => (token === run ? res() : rej("x")), ms));
+  const local = (el) => { const a = el.getBoundingClientRect(), s = stage.getBoundingClientRect(); return { x:(a.left - s.left)/scale, y:(a.top - s.top)/scale, w:a.width/scale, h:a.height/scale }; };
+
+  function reset(){
+    $("phone").classList.add("aim");
+    $("scrCam").classList.remove("off"); $("scrScan").classList.add("off"); $("scrRes").classList.add("off");
+    Object.values(slots).forEach((s) => { s.classList.remove("filled","flash-row"); s.querySelector(".v").textContent = "—"; });
+    pills.forEach((p) => p.classList.remove("hit","chk"));
+    $("band").classList.remove("on"); $("check").classList.remove("on"); $("check").innerHTML = "";
+    $("go").classList.remove("ready","press"); $("readingLbl").textContent = "Reading the photo…";
+    document.querySelectorAll(".rline").forEach((l) => l.classList.remove("on"));
+    $("why").classList.remove("on"); $("chips").classList.remove("on");
+    stage.querySelectorAll(".fly").forEach((g) => g.remove());
+  }
+  function finalState(){
+    reset(); $("phone").classList.remove("aim");
+    $("scrCam").classList.add("off"); $("scrScan").classList.remove("off");
+    ROWS.forEach((r) => { if (r.key) { const s = slots[r.key]; s.classList.add("filled"); s.querySelector(".v").textContent = r.shown || r.val; } });
+    $("readingLbl").textContent = "Read from the photo · 14 of 14";
+    $("check").innerHTML = "<b>Checked against the screen</b><br>tCO₂ 17.0 = 16.0 + 0.0301 × 32 ✓ · gap 35 ✓";
+    $("check").classList.add("on"); $("go").classList.add("ready"); step(2);
+  }
+
+  async function play(){
+    const t = ++run;
+    try{
+      reset(); step(0);
+      await sleep(1700, t);
+      // shutter
+      $("shutter").classList.add("press"); await sleep(140, t); $("shutter").classList.remove("press");
+      $("flash").classList.add("on"); await sleep(60, t); $("flash").classList.remove("on");
+      $("scrCam").classList.add("off"); $("scrScan").classList.remove("off");
+      $("phone").classList.remove("aim");
+      step(1); await sleep(900, t);
+      // read the screen row by row, each value flying into its field
+      const band = $("band"); band.classList.add("on");
+      const lisTop = local(document.getElementById("lis")).y;
+      for (let i = 0; i < ROWS.length; i++){
+        const r = ROWS[i], p = pills[i];
+        const pr = local(p);
+        band.style.top = (pr.y - lisTop - 4) + "px";
+        p.classList.add(r.lm ? "chk" : "hit");
+        const g = document.createElement("div");
+        g.className = "fly" + (r.lm ? " lm" : r.tone === "r" ? " red" : r.tone === "y" ? "" : " plain");
+        g.textContent = r.shown || r.val;
+        g.style.left = pr.x + "px"; g.style.top = pr.y + "px";
+        stage.appendChild(g);
+        let target;
+        if (r.lm){ target = local($("check")); target = { x: target.x + 40, y: target.y + 2 }; $("check").classList.add("on"); if (!$("check").innerHTML) $("check").innerHTML = "<b>Read to check the reading</b><br>"; }
+        else { const s = slots[r.key]; const v = local(s.querySelector(".v")); target = { x: v.x + v.w - 40, y: v.y - 1 }; }
+        requestAnimationFrame(() => { g.style.transform = "translate(" + (target.x - pr.x) + "px," + (target.y - pr.y) + "px) scale(.92)"; g.style.opacity = "0"; });
+        await sleep(560, t);
+        g.remove(); p.classList.remove("hit","chk");
+        if (r.lm){ const c = $("check"); const name = r.label.replace(" - WB","").replace("-Blood Gas",""); c.innerHTML += (c.dataset.n ? " · " : "") + name + " " + r.val; c.dataset.n = "1"; }
+        else { const s = slots[r.key]; s.querySelector(".v").textContent = r.shown || r.val; s.classList.add("filled","flash-row"); setTimeout(() => s.classList.remove("flash-row"), 600); }
+        $("readingLbl").textContent = "Read from the photo · " + Object.values(slots).filter((s) => s.classList.contains("filled")).length + " of 14";
+        await sleep(150, t);
+      }
+      band.classList.remove("on");
+      // the screen's own arithmetic
+      step(2); await sleep(400, t);
+      const c = $("check"); delete c.dataset.n;
+      c.innerHTML = "<b>Checked against the screen</b><br>tCO₂ 17.0 = 16.0 + 0.0301 × 32 ✓ · gap 35 ✓";
+      await sleep(1300, t);
+      $("go").classList.add("ready"); await sleep(900, t);
+      $("go").classList.add("press"); await sleep(180, t); $("go").classList.remove("press");
+      // the answer
+      step(3);
+      $("scrScan").classList.add("off"); $("scrRes").classList.remove("off");
+      await sleep(600, t);
+      for (const l of document.querySelectorAll(".rline")){ l.classList.add("on"); await sleep(380, t); }
+      $("why").classList.add("on"); await sleep(700, t);
+      $("chips").classList.add("on");
+      await sleep(5200, t);
+      if (!paused && visible) play();
+    } catch(e){ /* superseded */ }
+  }
+
+  if (reduce){ finalState(); $("toggle").hidden = true; }
+  else {
+    play();
+    $("toggle").addEventListener("click", () => {
+      paused = !paused; $("toggle").textContent = paused ? "Play" : "Pause"; $("toggle").setAttribute("aria-pressed", String(paused));
+      if (paused){ run++; finalState(); } else play();
+    });
+    new IntersectionObserver((es) => {
+      const v = es[0].isIntersecting;
+      if (v && !visible && !paused){ visible = true; play(); }
+      else if (!v && visible){ visible = false; run++; finalState(); }
+    }, { threshold: .15 }).observe(box);
+  }
+})();
+
+(function(){
+  // Learn demo: case #1 of the real library, answered step by step.
+  // Winter 1.5 × 6.6 + 8 = 17.9 → 16–20, measured 17; gap 136 − (99 + 6.6) = 30.4;
+  // ΔAG/ΔHCO3 = 18.4 / 17.4 = 1.06.
+  const STEPS = [
+    { q:"What is the primary disorder?", chips:["Metabolic acidosis","Respiratory acidosis","Metabolic alkalosis","Respiratory alkalosis"], good:0,
+      fb:"<b>Right.</b> pH low and HCO₃⁻ low, moving together → metabolic." },
+    { q:"Expected pCO₂ if the lungs compensate?", num:"18", unit:"mmHg", reveal:true,
+      fb:"<b>In the corridor.</b> Winter 1.5 × 6.6 + 8 = 17.9 → 16–20. Measured 17: compensation as expected." },
+    { q:"Anion gap?", num:"30", unit:"mmol/L",
+      fb:"<b>Right.</b> 136 − (99 + 6.6) = 30.4 → high-gap acidosis." },
+    { q:"Δ gap / Δ HCO₃⁻?", num:"1.1", unit:"",
+      fb:"<b>Right.</b> (30.4 − 12) / (24 − 6.6) = 1.06 → one process: ketoacidosis." },
+  ];
+  const $ = (id) => document.getElementById(id);
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const prog = [...$("lprog").children];
+  let run = 0, visible = false;
+  const sleep = (ms, t) => new Promise((res, rej) => setTimeout(() => (t === run ? res() : rej("x")), ms));
+  function show(i){
+    const st = STEPS[i];
+    $("lqn").textContent = "Step " + (i + 1) + " of " + STEPS.length;
+    $("lqt").textContent = st.q;
+    $("lchips").innerHTML = ""; $("lchips").hidden = !st.chips;
+    (st.chips || []).forEach((c) => { const e = document.createElement("span"); e.className = "lchip"; e.textContent = c; $("lchips").appendChild(e); });
+    $("lnum").hidden = !st.num; $("lbox").textContent = ""; $("lunit").textContent = st.unit || "";
+    $("lfb").classList.remove("on"); $("lfb").innerHTML = st.fb;
+    prog.forEach((p, k) => p.classList.toggle("on", k < i));
+  }
+  function rest(){
+    show(1); $("lbox").textContent = "18"; $("lfb").classList.add("on");
+    $("lPco2").classList.remove("hid"); $("lPco2").querySelector("b").textContent = "17";
+  }
+  async function play(){
+    const t = ++run;
+    try{
+      $("lPco2").classList.add("hid"); $("lPco2").querySelector("b").textContent = "••";
+      for (let i = 0; i < STEPS.length; i++){
+        const st = STEPS[i];
+        show(i); await sleep(1300, t);
+        if (st.chips){
+          const c = $("lchips").children[st.good];
+          c.classList.add("tap"); await sleep(160, t); c.classList.remove("tap"); c.classList.add("good");
+        } else {
+          for (const ch of st.num){ $("lbox").textContent += ch; await sleep(260, t); }
+          await sleep(300, t);
+        }
+        $("lfb").classList.add("on");
+        if (st.reveal){ await sleep(500, t); $("lPco2").classList.remove("hid"); $("lPco2").querySelector("b").textContent = "17"; }
+        prog[i].classList.add("on");
+        await sleep(2600, t);
+      }
+      await sleep(800, t);
+      if (visible) play();
+    } catch(e){}
+  }
+  if (reduce){ rest(); return; }
+  rest();
+  new IntersectionObserver((es) => {
+    const v = es[0].isIntersecting;
+    if (v && !visible){ visible = true; play(); }
+    else if (!v && visible){ visible = false; run++; rest(); }
+  }, { threshold: .3 }).observe(document.querySelector(".lphone"));
+})();
+</script>
+
 </body>
 </html>
