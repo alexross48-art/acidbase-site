@@ -110,6 +110,19 @@ function cost(model, usage) {
   return ((usage.input_tokens || 0) * p[0] + (usage.output_tokens || 0) * p[1]) / 1e6;
 }
 
+// ★ THINKING OFF FOR A READING JOB. The 5.x models think by default, and the
+// thinking counts against max_tokens: the first live run spent all 2000 tokens
+// thinking and returned no text at all (stop: max_tokens). Reading printed
+// numbers off a strip gains nothing from it. Per the API's model table:
+// Haiku 5.5 accepts {type:"disabled"} (at effort high or below — the default
+// is medium); Sonnet 5.5 rejects "disabled" and takes {type:"between_tools"}
+// instead; models where thinking is always on get low effort and more room.
+export function thinkingFor(model) {
+  if (/haiku-5/.test(model)) return { thinking: { type: "disabled" }, max_tokens: 1500 };
+  if (/sonnet-5-5/.test(model)) return { thinking: { type: "between_tools" }, max_tokens: 1500 };
+  return { output_config: { effort: "low" }, max_tokens: 6000 };
+}
+
 async function askClaude(model, b64, mediaType) {
   const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -121,9 +134,7 @@ async function askClaude(model, b64, mediaType) {
     body: JSON.stringify({
       // no `temperature`: the 4.7+/5.x models reject it (400 "deprecated");
       // the prompt's "never guess" and the checksums do the work instead
-      // room to spare: a model that thinks before answering spends output
-      // tokens on that first, and a cut-off answer has no JSON in it at all
-      model, max_tokens: 2000,
+      model, ...thinkingFor(model),
       messages: [{ role: "user", content: [
         { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
         { type: "text", text: PROMPT },
