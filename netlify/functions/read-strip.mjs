@@ -123,32 +123,56 @@ export function thinkingFor(model) {
   return { output_config: { effort: "low" }, max_tokens: 6000 };
 }
 
-async function askClaude(model, b64, mediaType) {
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      // no `temperature`: the 4.7+/5.x models reject it (400 "deprecated");
-      // the prompt's "never guess" and the checksums do the work instead
-      model, ...thinkingFor(model),
-      messages: [{ role: "user", content: [
-        { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
-        { type: "text", text: PROMPT },
-      ] }],
-    }),
+// ★ NEVER LET THE PHONE WAIT IN SILENCE. On 12 Oct the phone gave up after
+// 45 s with nothing to say. Every call to the model now has its own deadline,
+// a busy/overloaded answer is retried once while time allows, and whatever
+// happens comes back as a sentence with the seconds it took — so the next
+// failure names itself instead of timing out.
+const short = (m) => String(m).replace(/^claude-/, "");
+async function askClaude(model, b64, mediaType, ms) {
+  const body = JSON.stringify({
+    // no `temperature`: the 4.7+/5.x models reject it (400 "deprecated");
+    // the prompt's "never guess" and the checksums do the work instead
+    model, ...thinkingFor(model),
+    messages: [{ role: "user", content: [
+      { type: "image", source: { type: "base64", media_type: mediaType, data: b64 } },
+      { type: "text", text: PROMPT },
+    ] }],
   });
-  if (!r.ok) {
-    let msg = ""; try { const e = await r.json(); msg = e && e.error && e.error.message; } catch {}
-    throw new Error(`model answered ${r.status}${msg ? ": " + String(msg).slice(0, 120) : ""}`);
+  const t0 = Date.now();
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const left = ms - (Date.now() - t0);
+    if (left < 3000) break;
+    let r;
+    try {
+      r = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": process.env.ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body, signal: AbortSignal.timeout(left),
+      });
+    } catch (e) {
+      if (e && (e.name === "TimeoutError" || e.name === "AbortError"))
+        throw new Error(`${short(model)} gave no answer in ${Math.round((Date.now() - t0) / 1000)} s`);
+      throw new Error(`couldn't reach the model (${String((e && e.message) || e).slice(0, 80)})`);
+    }
+    if ([429, 500, 502, 503, 529].includes(r.status) && attempt === 0) {
+      await new Promise((res) => setTimeout(res, 1200));
+      continue;                                   // busy: one more try
+    }
+    if (!r.ok) {
+      let msg = ""; try { const e = await r.json(); msg = e && e.error && e.error.message; } catch {}
+      throw new Error(`${short(model)} answered ${r.status}${msg ? ": " + String(msg).slice(0, 120) : ""}`);
+    }
+    const d = await r.json();
+    const text = (d.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
+    const kinds = (d.content || []).map((c) => c.type).join(",");
+    return { text, usage: d.usage || {}, stop: d.stop_reason || "?", kinds, ms: Date.now() - t0 };
   }
-  const d = await r.json();
-  const text = (d.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
-  const kinds = (d.content || []).map((c) => c.type).join(",");
-  return { text, usage: d.usage || {}, stop: d.stop_reason || "?", kinds };
+  throw new Error(`${short(model)} was busy and gave no answer in ${Math.round((Date.now() - t0) / 1000)} s`);
 }
 
 async function underCaps(device) {
@@ -182,16 +206,21 @@ export default async (req) => {
 
   const cheap = process.env.CLOUD_READ_MODEL || "claude-haiku-5-5";
   const strong = process.env.CLOUD_READ_ESCALATE ?? "claude-sonnet-5-5";
+  const t0 = Date.now();
+  const secs = () => Math.round((Date.now() - t0) / 100) / 10;
   try {
     let model = cheap;
-    const first = await askClaude(cheap, image, mediaType);
+    // the phone waits 45 s; everything here finishes well inside that
+    const first = await askClaude(cheap, image, mediaType, 24000);
     let values = parseReply(first.text) || {};
     let checks = checksums(values);
     let spent = cost(cheap, first.usage);
     const usage = { input_tokens: first.usage.input_tokens || 0, output_tokens: first.usage.output_tokens || 0 };
     // one retry on the stronger model, only when the cheap read contradicts itself
-    if (fails(checks) && strong && strong !== cheap) {
-      const second = await askClaude(strong, image, mediaType);
+    const timing = { [short(cheap)]: first.ms };
+    if (fails(checks) && strong && strong !== cheap && Date.now() - t0 < 16000) {
+      const second = await askClaude(strong, image, mediaType, Math.min(20000, 38000 - (Date.now() - t0)));
+      timing[short(strong)] = second.ms;
       spent += cost(strong, second.usage);
       usage.input_tokens += second.usage.input_tokens || 0;
       usage.output_tokens += second.usage.output_tokens || 0;
@@ -203,11 +232,11 @@ export default async (req) => {
     // model did, so the phone's card can tell Alex instead of a blank
     if (!Object.keys(values).length) {
       const said = String(first.text || "").replace(/\s+/g, " ").slice(0, 140);
-      return json(502, { error: `the model returned no values (stop: ${first.stop}; blocks: ${first.kinds || "none"}${said ? `; said: "${said}"` : ""})`,
+      return json(502, { error: `the model returned no values (stop: ${first.stop}; blocks: ${first.kinds || "none"}${said ? `; said: "${said}"` : ""}; ${secs()} s)`,
                          usage, costUSD: Math.round(spent * 1e6) / 1e6 });
     }
-    return json(200, { values, checks, model, usage, costUSD: Math.round(spent * 1e6) / 1e6 });
+    return json(200, { values, checks, model, usage, costUSD: Math.round(spent * 1e6) / 1e6, seconds: secs(), timing });
   } catch (e) {
-    return json(502, { error: String((e && e.message) || e).slice(0, 200) });
+    return json(502, { error: `${String((e && e.message) || e).slice(0, 200)} (server ${secs()} s)` });
   }
 };
