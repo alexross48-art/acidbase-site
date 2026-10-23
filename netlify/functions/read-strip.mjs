@@ -48,7 +48,12 @@ Map the screen's names to keys, e.g. "Sodium-WB" -> Na, "Chloride - WB" -> Cl, "
 Each value is the number exactly as printed in the result column, as a string, keeping the minus sign and every decimal digit ("-6.3", "7.280", "5.20"). Ignore reference ranges, units, flags and colours.
 If a row is cut off, blurred or you are not sure of a digit, leave that key out. Never guess. Never compute a value that is not printed.`;
 
-const MAX_B64 = 3_000_000;          // a strip is ~0.5–1.4 MB of base64
+// Raised 3.0 → 5.5 M (Alex, 23 Oct): a 1.2.33 iPhone sent a 2000-px strip of
+// ~2.3 MB and was refused "strip too large". Netlify accepts a request body up
+// to 6 MB and the Claude API an image up to 10 MB base64, so 5.5 M (~4.1 MB of
+// JPEG) leaves room for the rest of the JSON. From 1.2.35 the app keeps its
+// strip near 0.6 M anyway; this is for the phones still on older builds.
+const MAX_B64 = 5_500_000;
 
 // The same rule the phone uses: a word with six or more digits, once the
 // letters OCR mistakes for digits are read as digits, or a line made only of
