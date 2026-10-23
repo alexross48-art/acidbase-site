@@ -51,6 +51,11 @@ export default async (req) => {
   // meant the eleventh doctor onwards was locked out of his own event. Mass
   // minting is already capped by the campaign quota, not by this counter.
   const fail = async (msg, status = 400) => {
+    // ★ the reason goes to the function log (Alex, 22 Oct: a refusal showed up
+    // in the request log as a bare 400 and nobody could say why). No name and
+    // no email are written — only their shape and the event word as typed.
+    console.log(JSON.stringify({ signup_refused: msg, campaign_typed: String(body.campaign || "").slice(0, 40),
+      campaign: campaign || null, name_len: name.length, email_shape_ok: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) }));
     await store.set(hourKey, String(tries + 1));
     return new Response(JSON.stringify({ error: msg }), { status, headers: cors });
   };

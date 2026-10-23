@@ -586,43 +586,70 @@ footer .mail{font-family:var(--mono);user-select:all}
   const dev = $("keyDev");
   dev.addEventListener("input", () => { const v = dev.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
     dev.value = (v.match(/.{1,4}/g) || []).join("-"); });
+  // ★ A WEAK SIGNAL IS NOT "NO CONNECTION" (Alex, 22 Oct). On one bar of 5G the
+  // request died on the way and the form said "No connection — try again",
+  // which reads like the site is down. Now: one quiet retry after 2.5 s, a 25 s
+  // limit per try, and a message that names the likely cause. A server that
+  // answered with something unreadable is reported as that, not as no signal.
+  const WEAK = "Weak or no signal \u2014 the request didn't reach the server. Try again where the signal is better (or on Wi-Fi).";
+  async function postJSON(url, body, tries = 2) {
+    let lastErr = null;
+    for (let attempt = 0; attempt < tries; attempt++) {
+      if (attempt) await new Promise((r) => setTimeout(r, 2500));
+      const ctl = typeof AbortController !== "undefined" ? new AbortController() : null;
+      const t = ctl ? setTimeout(() => ctl.abort(), 25000) : null;
+      try {
+        const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body), signal: ctl ? ctl.signal : undefined });
+        let d = null; try { d = await r.json(); } catch (e) { d = null; }
+        return { ok: r.ok, status: r.status, d: d || {}, readable: d != null };
+      } catch (e) { lastErr = e; }
+      finally { if (t) clearTimeout(t); }
+    }
+    return { ok: false, status: 0, d: {}, readable: false, net: true, err: lastErr };
+  }
+  const failText = (res) => res.net ? WEAK
+    : (res.d && res.d.error) || (res.readable ? "Something went wrong." : `The server answered oddly (${res.status}) \u2014 try again in a minute.`);
+
   $("keyGo").onclick = async () => {
     const out = $("keyOut"), msg = $("keyMsg"); out.style.display = "none"; msg.style.display = "none";
+    const btn = $("keyGo"); if (btn.disabled) return;
+    const label = btn.textContent; btn.disabled = true; btn.textContent = "Working\u2026";
     try {
-      const r = await fetch("/api/key", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deviceId: dev.value, invite: $("keyInv").value }) });
-      const d = await r.json();
-      if (d.key) { out.textContent = d.key; out.style.display = "block"; }
-      else show(msg, d.error || "Something went wrong.");
-    } catch { show(msg, "No connection — try again."); }
+      const res = await postJSON("/api/key", { deviceId: dev.value, invite: $("keyInv").value });
+      if (res.d.key) { out.textContent = res.d.key; out.style.display = "block"; }
+      else show(msg, failText(res));
+    } finally { btn.disabled = false; btn.textContent = label; }
   };
   const su = $("suGo");
   su.onclick = async () => {
     // a second tap while the first request is in flight would mint a second code
+    // (and the server returns the same code for the same email, so the quiet
+    // retry below cannot mint two either)
     if (su.disabled) return;
     const code = $("suCode"), msg = $("suMsg"); code.style.display = "none"; msg.style.display = "none";
-    const label = su.textContent; su.disabled = true; su.textContent = "Working…";
+    const label = su.textContent; su.disabled = true; su.textContent = "Working\u2026";
     try {
-      const r = await fetch("/api/signup", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: $("suName").value, email: $("suMail").value, campaign: $("suCamp").value }) });
-      const d = await r.json();
+      const res = await postJSON("/api/signup", { name: $("suName").value, email: $("suMail").value, campaign: $("suCamp").value });
+      const d = res.d;
       if (d.code) {
         code.textContent = d.code; code.style.display = "block"; $("keyInv").value = d.code;
-        if (d.again) show(msg, "This email already has a code — here it is again.", true);
-      } else show(msg, d.error || "Something went wrong.");
-    } catch { show(msg, "No connection — try again."); }
-    finally { su.disabled = false; su.textContent = label; }
+        if (d.again) show(msg, "This email already has a code \u2014 here it is again.", true);
+      } else show(msg, failText(res));
+    } finally { su.disabled = false; su.textContent = label; }
   };
   $("fbGo").onclick = async () => {
     const m = $("fbMsg"); m.style.display = "none";
     const text = $("fbText").value.trim();
     if (!text) { show(m, "Write a line first."); return; }
+    const btn = $("fbGo"); if (btn.disabled) return;
+    btn.disabled = true;
     try {
-      const r = await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ source: "site", text, email: $("fbMail").value.trim(), at: new Date().toISOString() }) });
-      if (r.ok) { show(m, "Sent — thank you.", true); $("fbText").value = ""; }
-      else show(m, "Could not send — try again.");
-    } catch { show(m, "No connection — try again."); }
+      // no quiet retry here: a reply lost on the way back would post the same feedback twice
+      const res = await postJSON("/api/feedback", { source: "site", text, email: $("fbMail").value.trim(), at: new Date().toISOString() }, 1);
+      if (res.ok) { show(m, "Sent \u2014 thank you.", true); $("fbText").value = ""; }
+      else show(m, res.net ? WEAK : "Could not send \u2014 try again.");
+    } finally { btn.disabled = false; }
   };
 })();
 </script>
