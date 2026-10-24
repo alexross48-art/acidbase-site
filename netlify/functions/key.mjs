@@ -59,6 +59,9 @@ export default async (req) => {
   if (boundTo && boundTo !== device)
     return fail("This invite code was already used on a different phone.", 403);
   if (!boundTo) await store.set(bindKey, device);
+  // the reverse index read-strip uses to tell a phone we issued a key to from a
+  // key made with a secret pulled out of the public APK (see knownDevice there)
+  await store.set(`dev:${device}`, minted ? dashed : invite);
 
   const h = createHmac("sha256", SECRET).update(`acidbase-scout|${device}`).digest();
   let flat = "";

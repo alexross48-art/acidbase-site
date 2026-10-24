@@ -192,6 +192,47 @@ async function underCaps(device) {
   return true;
 }
 
+// ★ ONLY PHONES THAT GOT THEIR KEY FROM US (Alex, 24 Oct). The app checks its
+// key offline, so TRIAL_SECRET has to live inside the app — and the APK is
+// public. Anyone who unpacks it can make a valid key for any phone, which costs
+// nothing for the trial itself but would let them run Cloud check on Alex's
+// Anthropic account. So a valid key is no longer enough here: the phone must
+// also be known. A phone is known if
+//   - /api/key issued its key (key.mjs now writes dev:<code> on every issue);
+//   - it redeemed an invite before that index existed (bind:<invite> → device);
+//   - it had already used Cloud check by GRANDFATHER_UNTIL (Alex's own phones,
+//     whose keys came from make-key, and the testers already using it);
+//   - or it is listed in CLOUD_ALLOW_DEVICES (comma-separated device IDs).
+// Each answer found by searching is written back as dev:<code>, so the search
+// runs once per phone.
+const GRANDFATHER_UNTIL = "2026-10-24";
+async function listAll(store, prefix) {
+  const out = []; let cursor;
+  do {
+    const page = await store.list({ prefix, cursor });
+    for (const b of (page && page.blobs) || []) out.push(b.key);
+    cursor = page && page.cursor;
+  } while (cursor);
+  return out;
+}
+export async function knownDevice(device) {
+  const allow = (process.env.CLOUD_ALLOW_DEVICES || "").split(",").map(norm).filter(Boolean);
+  if (allow.includes(device)) return "allow-list";
+  const trial = getStore({ name: "acidbase-trial", consistency: "strong" });
+  if (await trial.get(`dev:${device}`)) return "registered";
+  try {
+    for (const k of await listAll(trial, "bind:"))
+      if (norm(await trial.get(k)) === device) { await trial.set(`dev:${device}`, k.slice(5)); return "invite"; }
+  } catch (e) { console.log(JSON.stringify({ known_device_bind_scan_failed: String(e).slice(0, 80) })); }
+  try {
+    for (const k of await listAll(getStore("cloud-read"), "dev:")) {
+      const [, day, d] = k.split(":");
+      if (d === device && day <= GRANDFATHER_UNTIL) { await trial.set(`dev:${device}`, `cloud-before-${GRANDFATHER_UNTIL}`); return "grandfathered"; }
+    }
+  } catch (e) { console.log(JSON.stringify({ known_device_usage_scan_failed: String(e).slice(0, 80) })); }
+  return null;
+}
+
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return json(405, { error: "POST only" });
@@ -202,6 +243,11 @@ export default async (req) => {
   const device = norm(body && body.device), key = norm(body && body.key);
   if (device.length !== 8 || typeof image !== "string") return json(400, { error: "bad request" });
   if (key !== keyFor(process.env.TRIAL_SECRET, device)) return json(403, { error: "this device's licence key wasn't accepted" });
+  const known = await knownDevice(device);
+  if (!known) {
+    console.log(JSON.stringify({ cloud_refused_unknown_device: device }));
+    return json(403, { error: "this phone isn't registered for Cloud check \u2014 get its key on acidbase-scout.netlify.app (or ask Alex)" });
+  }
   if (!/^image\/(jpeg|png)$/.test(mediaType)) return json(400, { error: "bad image type" });
   if (image.length > MAX_B64) return json(413, { error: "strip too large" });
   // the phone sends the text its own reader still sees in the finished strip;
