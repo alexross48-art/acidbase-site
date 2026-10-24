@@ -76,8 +76,25 @@ export default async (req) => {
     const page = await fstore.list({ cursor });
     fb += page.blobs.length; cursor = page.cursor;
   } while (cursor);
-  const campRows = Object.entries(perCamp).map(([c, v]) =>
-    `<tr><td>${esc(c)}</td><td>${v.signed}</td><td>${v.bound}</td><td>${v.analyses}</td></tr>`).join("");
+  // ★ FREE PLACES PER EVENT (Alex, 24 Oct: "how many people can still
+  // install?" before a forum talk). The limit is the CAMPAIGNS env var, the
+  // count is the quota:<EVENT> counter signup.mjs keeps; an event with a limit
+  // but no signups yet is listed too, so a fresh event word shows its places.
+  const limits = {};
+  for (const part of (process.env.CAMPAIGNS || "").split(",")) {
+    const [c, n] = part.split(":");
+    const k = (c || "").toUpperCase().replace(/[^A-Z0-9-]/g, "");
+    if (k && parseInt(n, 10) > 0) limits[k] = parseInt(n, 10);
+  }
+  const camps = Array.from(new Set([...Object.keys(limits), ...Object.keys(perCamp)])).sort();
+  const campRows = (await Promise.all(camps.map(async (c) => {
+    const v = perCamp[c] || { signed: 0, bound: 0, analyses: 0 };
+    const used = parseInt((await store.get(`quota:${c}`)) || "0", 10) || v.signed;
+    const lim = limits[c];
+    const free = lim != null ? Math.max(0, lim - used) : null;
+    return `<tr><td>${esc(c)}${lim == null ? " <small>(closed)</small>" : ""}</td><td>${lim != null ? lim : "—"}</td><td>${used}</td>`
+      + `<td><b>${free != null ? free : "—"}</b></td><td>${v.signed}</td><td>${v.bound}</td><td>${v.analyses}</td></tr>`;
+  }))).join("");
   const listRows = rows.map((r) =>
     `<tr><td>${esc(r.at.slice(0, 16).replace("T", " "))}</td><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td><code>${esc(r.code)}</code></td><td>${esc(r.campaign)}</td><td>${r.bound ? "✓ on a phone" : "—"}</td><td>${r.analyses || 0}</td><td>${esc(r.last)}</td><td>${esc(r.version)}</td></tr>`).join("");
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="robots" content="noindex">
@@ -90,7 +107,8 @@ th{background:#102A38}code{color:#9FE0EC}</style></head><body>
 <h1>Acid-Base Scout — closed trial</h1>
 <p>Signed up: <b>${rows.length}</b> · Activated on a phone: <b>${rows.filter((r) => r.bound).length}</b> · Analyses run: <b>${ticks}</b> on <b>${devs}</b> devices · Feedback reports: <b>${fb}</b></p>
 <h2>By event</h2>
-<table><tr><th>Event</th><th>Signed up</th><th>Activated</th><th>Analyses</th></tr>${campRows || "<tr><td colspan=4>—</td></tr>"}</table>
+<table><tr><th>Event word</th><th>Limit</th><th>Used</th><th>Free places</th><th>Signed up</th><th>Activated</th><th>Analyses</th></tr>${campRows || "<tr><td colspan=7>—</td></tr>"}</table>
+<p style="font-size:13px;color:#9FB8C4">Limits come from the CAMPAIGNS variable in Netlify (WORD:limit, comma-separated). To open more places: edit it, then Trigger deploy.</p>
 <h2>Everyone</h2>
 <table><tr><th>Date</th><th>Name</th><th>Email</th><th>Code</th><th>Event</th><th>Status</th><th>Analyses</th><th>Last</th><th>Version</th></tr>${listRows || "<tr><td colspan=9>—</td></tr>"}</table>
 </body></html>`;
